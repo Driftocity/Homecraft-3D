@@ -755,7 +755,7 @@ export default function ThreeCanvas({
         const lSlopeMesh = new THREE.Mesh(lSlopeGeo, roofMat);
         lSlopeMesh.name = 'roof-slope-left';
         lSlopeMesh.position.set(0, wallHeight + peakHeight / 2, -rLength / 4);
-        lSlopeMesh.rotation.x = angle;
+        lSlopeMesh.rotation.x = -angle;
         lSlopeMesh.castShadow = true;
         lSlopeMesh.receiveShadow = true;
         scene.add(lSlopeMesh);
@@ -765,7 +765,7 @@ export default function ThreeCanvas({
         const rSlopeMesh = new THREE.Mesh(rSlopeGeo, roofMat);
         rSlopeMesh.name = 'roof-slope-right';
         rSlopeMesh.position.set(0, wallHeight + peakHeight / 2, rLength / 4);
-        rSlopeMesh.rotation.x = -angle;
+        rSlopeMesh.rotation.x = angle;
         rSlopeMesh.castShadow = true;
         rSlopeMesh.receiveShadow = true;
         scene.add(rSlopeMesh);
