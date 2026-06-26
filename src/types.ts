@@ -92,6 +92,8 @@ export interface HomeProject {
   // Costing & Pricing Customization
   selectedState?: string; // State code: e.g. 'CA', 'TX', 'NY', 'FL'
   customPrices?: { [key: string]: number }; // base cost per unit/sqm custom overrides
+  unitSystem?: 'imperial' | 'metric'; // measurement system: footage/feet vs. meters
+  targetBudget?: number; // target budget for budget tracking
 }
 
 export interface AILayoutResponse {

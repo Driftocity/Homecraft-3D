@@ -8,6 +8,7 @@ import ThreeCanvas from './components/ThreeCanvas';
 import Sidebar from './components/Sidebar';
 import Inspector from './components/Inspector';
 import ConstructionGuide from './components/ConstructionGuide';
+import SummaryReportModal from './components/SummaryReportModal';
 import { HomeProject, Furniture, FloorMaterial } from './types';
 import { getCatalogItemById } from './data/furnitureCatalog';
 import {
@@ -30,7 +31,8 @@ import {
   Undo2,
   Redo2,
   Save,
-  History
+  History,
+  Edit2
 } from 'lucide-react';
 
 // Default starter project (Warm furnished living room)
@@ -49,6 +51,8 @@ const INITIAL_PROJECT: HomeProject = {
   roofColor: '#334155',
   roofPitch: 0.35,
   roofOverhang: 0.3,
+  unitSystem: 'imperial',
+  targetBudget: 60000,
   walls: [
     // Closed outer room loop (10m x 10m)
     { id: 'wall-north', p1: { x: -5, y: -5 }, p2: { x: 5, y: -5 }, height: 2.8, thickness: 0.15, color: '#f8fafc' },
@@ -164,6 +168,7 @@ export default function App() {
   const [showHelp, setShowHelp] = useState<boolean>(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
+  const [showSummaryReport, setShowSummaryReport] = useState<boolean>(false);
 
   // Update project with undo/redo capability
   const setProjectWithHistory = (updateValue: HomeProject | ((prev: HomeProject) => HomeProject)) => {
@@ -213,6 +218,65 @@ export default function App() {
     // Record history of the final dragged item position
     setProjectWithHistory((prev) => prev);
   };
+
+  const [isEditingName, setIsEditingName] = useState<boolean>(false);
+  const [tempName, setTempName] = useState<string>(project.name);
+
+  // Sync tempName when project.name changes externally (e.g., templates loading)
+  React.useEffect(() => {
+    setTempName(project.name);
+  }, [project.name]);
+
+  const handleSaveName = () => {
+    setIsEditingName(false);
+    const trimmed = tempName.trim();
+    if (trimmed && trimmed !== project.name) {
+      setProjectWithHistory({
+        ...project,
+        name: trimmed
+      });
+    }
+  };
+
+  // Global Keyboard Shortcuts (Alt+R for Reset Layout, Ctrl+Z for Undo, Ctrl+Y for Redo)
+  React.useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Avoid firing if in input or textareas
+      if (
+        document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA' ||
+        document.activeElement?.getAttribute('contenteditable') === 'true'
+      ) {
+        return;
+      }
+
+      // Alt + R: Reset Layout
+      if (e.altKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        handleClearWorkspace();
+      }
+
+      // Ctrl + Z: Undo
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        handleUndo();
+      }
+
+      // Ctrl + Y or Ctrl + Shift + Z: Redo
+      if (
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')
+      ) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [project, undoStack, redoStack]);
 
   // Load preset templates
   const handleLoadTemplate = (newProject: HomeProject) => {
@@ -391,12 +455,37 @@ export default function App() {
     <div className="flex flex-col h-screen bg-slate-900 text-slate-100 font-sans antialiased overflow-hidden" id="applet-root">
       {/* Top Banner / Navigation Dashboard */}
       <header className="h-16 shrink-0 bg-slate-950 border-b border-slate-800 flex items-center justify-between px-4 sm:px-6 z-10" id="top-dashboard">
-        {/* Branding Title */}
+        {/* Branding Title with Inline Editor */}
         <div className="flex items-center gap-2">
           <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-          <h1 className="text-xs sm:text-sm font-bold tracking-wider text-slate-100 font-mono uppercase truncate max-w-[120px] sm:max-w-none">
-            {project.name}
-          </h1>
+          {isEditingName ? (
+            <input
+              type="text"
+              value={tempName}
+              onChange={(e) => setTempName(e.target.value)}
+              onBlur={handleSaveName}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveName();
+                if (e.key === 'Escape') {
+                  setTempName(project.name);
+                  setIsEditingName(false);
+                }
+              }}
+              className="bg-slate-900 text-slate-100 border border-indigo-500 px-2 py-0.5 rounded text-xs sm:text-sm font-bold font-mono uppercase focus:outline-none focus:ring-1 focus:ring-indigo-500 max-w-[150px] sm:max-w-[240px]"
+              autoFocus
+            />
+          ) : (
+            <div 
+              onClick={() => setIsEditingName(true)}
+              className="flex items-center gap-1.5 cursor-pointer group"
+              title="Click to edit project name"
+            >
+              <h1 className="text-xs sm:text-sm font-bold tracking-wider text-slate-100 font-mono uppercase truncate max-w-[120px] sm:max-w-[200px] group-hover:text-indigo-400 transition-colors">
+                {project.name}
+              </h1>
+              <Edit2 className="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400 transition-colors opacity-0 group-hover:opacity-100 hidden sm:inline-block" />
+            </div>
+          )}
           <span className="hidden md:inline text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded-md font-mono shrink-0">
             {project.dimensions.width}m × {project.dimensions.length}m Layout
           </span>
@@ -531,10 +620,20 @@ export default function App() {
           {/* Clear Button */}
           <button
             onClick={handleClearWorkspace}
-            title="Reset scene empty canvas"
+            title="Reset scene layout (Shortcut: Alt + R)"
             className="p-1.5 sm:p-2 rounded-xl bg-rose-950/20 hover:bg-rose-950/40 border border-rose-950 hover:border-rose-700 text-rose-300 hover:text-rose-200 transition cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </button>
+
+          {/* Summary Report Button */}
+          <button
+            onClick={() => setShowSummaryReport(true)}
+            title="Generate Comprehensive Construction Summary Report"
+            className="p-1.5 sm:px-3 sm:py-2 rounded-xl bg-indigo-955/40 hover:bg-indigo-950/70 border border-indigo-900/60 text-indigo-300 hover:text-indigo-200 transition cursor-pointer flex items-center gap-1.5 text-xs font-black select-none font-mono"
+          >
+            <FileText className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden sm:inline">Report</span>
           </button>
 
           {/* Help Button */}
@@ -846,6 +945,13 @@ export default function App() {
           <span>{viewMode === 'walkthrough' ? 'Touch D-Pad' : 'Press R to Rotate'}</span>
         </div>
       </footer>
+
+      {showSummaryReport && (
+        <SummaryReportModal
+          project={project}
+          onClose={() => setShowSummaryReport(false)}
+        />
+      )}
     </div>
   );
 }

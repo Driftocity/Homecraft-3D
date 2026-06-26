@@ -62,6 +62,12 @@ export default function ThreeCanvas({
   const labelsContainerRef = useRef<HTMLDivElement>(null);
   const roomLabelsContainerRef = useRef<HTMLDivElement>(null);
 
+  // Spawning & Transition Anim Refs
+  const targetCameraPos = useRef<THREE.Vector3>(new THREE.Vector3(0, 20, 0.001));
+  const targetControlsTarget = useRef<THREE.Vector3>(new THREE.Vector3(0, 0, 0));
+  const isTransitioningRef = useRef<boolean>(false);
+  const animatedFurnitureRef = useRef<Map<string, { current: number; target: number; scaleX: number; scaleY: number; scaleZ: number }>>(new Map());
+
   // Trigger re-texture when floor settings change
   const floorTextureCacheRef = useRef<{ [key: string]: THREE.CanvasTexture }>({});
   const sidingTextureCacheRef = useRef<{ [key: string]: THREE.CanvasTexture }>({});
@@ -414,6 +420,35 @@ export default function ThreeCanvas({
         }
       }
 
+      // 1. Smoothly transition camera view if transitioning
+      if (isTransitioningRef.current) {
+        camera.position.lerp(targetCameraPos.current, 0.08);
+        controls.target.lerp(targetControlsTarget.current, 0.08);
+        if (camera.position.distanceTo(targetCameraPos.current) < 0.02 && controls.target.distanceTo(targetControlsTarget.current) < 0.02) {
+          camera.position.copy(targetCameraPos.current);
+          controls.target.copy(targetControlsTarget.current);
+          isTransitioningRef.current = false;
+        }
+      }
+
+      // 2. Smoothly animate furniture spawning/scale transitions
+      animatedFurnitureRef.current.forEach((anim, id) => {
+        if (anim.current < anim.target) {
+          anim.current += 0.08;
+          if (anim.current >= anim.target) {
+            anim.current = anim.target;
+          }
+          const mesh = scene.getObjectByName(`furniture-${id}`);
+          if (mesh) {
+            mesh.scale.set(
+              anim.current * anim.scaleX,
+              anim.current * anim.scaleY,
+              anim.current * anim.scaleZ
+            );
+          }
+        }
+      });
+
       controls.update();
       renderer.render(scene, camera);
 
@@ -459,10 +494,14 @@ export default function ThreeCanvas({
             const x = (mid.x * halfWidth) + halfWidth;
             const y = (-(mid.y * halfHeight)) + halfHeight;
             
+            const useImperial = project.unitSystem === 'imperial';
+            const displayDistance = useImperial ? distance * 3.28084 : distance;
+            const unit = useImperial ? 'ft' : 'm';
+            
             el.style.left = `${x}px`;
             el.style.top = `${y}px`;
             el.style.opacity = '1';
-            el.innerHTML = `<span>${distance.toFixed(2)}m</span>`;
+            el.innerHTML = `<span>${displayDistance.toFixed(1)}${unit}</span>`;
           }
         });
       }
@@ -659,30 +698,36 @@ export default function ThreeCanvas({
     if (!camera || !controls) return;
 
     if (viewMode === '2d') {
-      // Overhead camera position
-      controls.target.set(0, 0, 0);
-      camera.position.set(0, 20, 0.001); // offset slightly on Z to avoid gimbal lock in orbital controls
+      // Setup overhead targets
+      targetControlsTarget.current.set(0, 0, 0);
+      targetCameraPos.current.set(0, 20, 0.001);
+      isTransitioningRef.current = true;
+
       controls.enableRotate = false;
-      controls.maxPolarAngle = 0;
+      controls.maxPolarAngle = 0.01; // permit micro adjustment or hold flat
       controls.minPolarAngle = 0;
       controls.update();
       setActiveControls('Blueprint Overhead Mode (Left click items to select, Drag to move)');
     } else if (viewMode === '3d') {
-      // Free Orbit 3D position
+      // Setup 3D Orbit targets
+      targetControlsTarget.current.set(0, 0, 0);
+      targetCameraPos.current.set(10, 10, 12);
+      isTransitioningRef.current = true;
+
       controls.enableRotate = true;
       controls.maxPolarAngle = Math.PI / 2 - 0.05;
       controls.minPolarAngle = 0.05;
-      camera.position.set(10, 10, 12);
-      controls.target.set(0, 0, 0);
       controls.update();
       setActiveControls('3D Orbital Studio (Right Click & drag to rotate, Left click to select & slide items)');
     } else if (viewMode === 'walkthrough') {
-      // FPS eye level walkthrough
+      // Setup first person walking targets
+      targetControlsTarget.current.set(0, 1.6, 0);
+      targetCameraPos.current.set(0, 1.6, 5);
+      isTransitioningRef.current = true;
+
       controls.enableRotate = true;
       controls.maxPolarAngle = Math.PI - 0.1;
       controls.minPolarAngle = 0.1;
-      camera.position.set(0, 1.6, 5); // eye level 1.6m, near south edge
-      controls.target.set(0, 1.6, 0); // look forward towards center
       controls.update();
       setActiveControls('Walkthrough mode active. Use WASD or Arrow Keys to navigate at eye-level!');
     }
@@ -875,7 +920,7 @@ export default function ThreeCanvas({
       wallTex.repeat.set(distance, wall.height);
 
       const wallMat = new THREE.MeshStandardMaterial({
-        color: wall.id === selectedWallId ? '#2563eb' : '#ffffff',
+        color: wall.id === selectedWallId ? '#2563eb' : (wall.color || '#ffffff'),
         map: wall.id === selectedWallId ? null : wallTex,
         roughness: 0.75,
         metalness: 0.05,
@@ -1019,6 +1064,14 @@ export default function ThreeCanvas({
     }
 
     // 4. Render Furniture
+    // Clean up deleted items from the animated map
+    const activeFurnitureIds = new Set(project.furniture.map(f => f.id));
+    animatedFurnitureRef.current.forEach((_, id) => {
+      if (!activeFurnitureIds.has(id)) {
+        animatedFurnitureRef.current.delete(id);
+      }
+    });
+
     project.furniture.forEach((item) => {
       const catalogItem = getCatalogItemById(item.catalogId);
       if (!catalogItem) return;
@@ -1028,7 +1081,32 @@ export default function ThreeCanvas({
       // Placement transform
       furnitureMesh.position.set(item.position.x, item.position.y, item.position.z);
       furnitureMesh.rotation.y = item.rotation;
-      furnitureMesh.scale.set(item.scale.x, item.scale.y, item.scale.z);
+
+      // Handle spawn/pop scale transition animation
+      const targetScaleX = item.scale.x;
+      const targetScaleY = item.scale.y;
+      const targetScaleZ = item.scale.z;
+
+      if (!animatedFurnitureRef.current.has(item.id)) {
+        furnitureMesh.scale.set(0.01, 0.01, 0.01);
+        animatedFurnitureRef.current.set(item.id, {
+          current: 0.01,
+          target: 1.0,
+          scaleX: targetScaleX,
+          scaleY: targetScaleY,
+          scaleZ: targetScaleZ
+        });
+      } else {
+        const anim = animatedFurnitureRef.current.get(item.id)!;
+        anim.scaleX = targetScaleX;
+        anim.scaleY = targetScaleY;
+        anim.scaleZ = targetScaleZ;
+        furnitureMesh.scale.set(
+          anim.current * targetScaleX,
+          anim.current * targetScaleY,
+          anim.current * targetScaleZ
+        );
+      }
 
       // Highlight selected item with helper wireframe box
       if (item.id === selectedFurnitureId) {

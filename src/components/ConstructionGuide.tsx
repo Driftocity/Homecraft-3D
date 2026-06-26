@@ -19,6 +19,122 @@ import {
 } from 'lucide-react';
 import { HomeProject, FloorMaterial, FoundationType, SidingType, RoofType, Wall } from '../types';
 
+export interface MaterialPreset {
+  id: string;
+  name: string;
+  description: string;
+  emoji: string;
+  sidingType: SidingType;
+  sidingColor: string;
+  floorMaterial: FloorMaterial;
+  floorColor: string;
+  roofType: RoofType;
+  roofColor: string;
+  foundationType: FoundationType;
+  foundationColor: string;
+  wallColor: string;
+  colors: string[];
+}
+
+export const MATERIAL_PRESETS: MaterialPreset[] = [
+  {
+    id: 'luxury-modern',
+    name: 'Luxury Modern',
+    description: 'Sleek white stucco, royal marble floors, and flat slate gray shingles.',
+    emoji: '✨',
+    sidingType: 'stucco',
+    sidingColor: '#f8fafc',
+    floorMaterial: 'marble',
+    floorColor: '#f1f5f9',
+    roofType: 'flat',
+    roofColor: '#1e293b',
+    foundationType: 'slab',
+    foundationColor: '#64748b',
+    wallColor: '#f8fafc',
+    colors: ['#f8fafc', '#f1f5f9', '#1e293b', '#64748b']
+  },
+  {
+    id: 'rustic-industrial',
+    name: 'Rustic Industrial',
+    description: 'Classic red brick siding, raw concrete flooring, and metal roof.',
+    emoji: '🧱',
+    sidingType: 'brick',
+    sidingColor: '#991b1b',
+    floorMaterial: 'concrete',
+    floorColor: '#64748b',
+    roofType: 'gabled',
+    roofColor: '#334155',
+    foundationType: 'basement',
+    foundationColor: '#475569',
+    wallColor: '#3f3f46',
+    colors: ['#991b1b', '#64748b', '#334155', '#3f3f46']
+  },
+  {
+    id: 'scandinavian',
+    name: 'Nordic Minimalist',
+    description: 'Light ash wood planks, bleached pine hardwood, and crisp white trim.',
+    emoji: '🌲',
+    sidingType: 'wood',
+    sidingColor: '#f5f5f4',
+    floorMaterial: 'hardwood',
+    floorColor: '#e7e5e4',
+    roofType: 'gabled',
+    roofColor: '#1e293b',
+    foundationType: 'slab',
+    foundationColor: '#78716c',
+    wallColor: '#fafaf9',
+    colors: ['#f5f5f4', '#e7e5e4', '#1e293b', '#fafaf9']
+  },
+  {
+    id: 'coastal-cottage',
+    name: 'Coastal Cottage',
+    description: 'Soft sky blue lap siding, rich honey oak, and sandy shingles.',
+    emoji: '⚓',
+    sidingType: 'vinyl',
+    sidingColor: '#e0f2fe',
+    floorMaterial: 'hardwood',
+    floorColor: '#d97706',
+    roofType: 'gabled',
+    roofColor: '#475569',
+    foundationType: 'crawlspace',
+    foundationColor: '#cbd5e1',
+    wallColor: '#f0f9ff',
+    colors: ['#e0f2fe', '#d97706', '#475569', '#f0f9ff']
+  },
+  {
+    id: 'desert-adobe',
+    name: 'Desert Adobe',
+    description: 'Warm terracotta stucco, clay floor tiles, and wood log style trim.',
+    emoji: '🌵',
+    sidingType: 'stucco',
+    sidingColor: '#c2410c',
+    floorMaterial: 'tile',
+    floorColor: '#ea580c',
+    roofType: 'flat',
+    roofColor: '#78350f',
+    foundationType: 'slab',
+    foundationColor: '#a21caf',
+    wallColor: '#fed7aa',
+    colors: ['#c2410c', '#ea580c', '#78350f', '#fed7aa']
+  },
+  {
+    id: 'mountain-cabin',
+    name: 'Rustic Cabin',
+    description: 'Rich log wood siding, deep walnut flooring, and forest blue roofing.',
+    emoji: '🪵',
+    sidingType: 'wood',
+    sidingColor: '#78350f',
+    floorMaterial: 'hardwood',
+    floorColor: '#451a03',
+    roofType: 'gabled',
+    roofColor: '#164e63',
+    foundationType: 'crawlspace',
+    foundationColor: '#451a03',
+    wallColor: '#fef3c7',
+    colors: ['#78350f', '#451a03', '#164e63', '#fef3c7']
+  }
+];
+
 interface ConstructionGuideProps {
   project: HomeProject;
   onUpdateProjectSettings: (project: HomeProject) => void;
@@ -107,6 +223,26 @@ export default function ConstructionGuide({
     }
   };
 
+  const handleApplyPreset = (preset: MaterialPreset) => {
+    const updatedWalls = project.walls.map(wall => ({
+      ...wall,
+      color: preset.wallColor
+    }));
+
+    onUpdateProjectSettings({
+      ...project,
+      sidingType: preset.sidingType,
+      sidingColor: preset.sidingColor,
+      floorMaterial: preset.floorMaterial,
+      floorColor: preset.floorColor,
+      roofType: preset.roofType,
+      roofColor: preset.roofColor,
+      foundationType: preset.foundationType,
+      foundationColor: preset.foundationColor,
+      walls: updatedWalls
+    });
+  };
+
   return (
     <div className="flex flex-col gap-5 py-1">
       {/* Starting Off with a Clean Canvas */}
@@ -126,13 +262,48 @@ export default function ConstructionGuide({
           </button>
         </div>
 
+        {/* Dynamic Imperial / Metric Toggle Segment */}
+        <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
+          <span className="text-[9px] text-slate-400 font-mono uppercase font-bold">Measurement Unit</span>
+          <div className="grid grid-cols-2 p-0.5 bg-slate-950 border border-slate-850 rounded-lg text-[9px] font-mono font-bold shrink-0">
+            <button
+              onClick={() => onUpdateProjectSettings({ ...project, unitSystem: 'imperial' })}
+              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                project.unitSystem === 'imperial'
+                  ? 'bg-indigo-600 text-white font-extrabold shadow-sm'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              Footage (Ft)
+            </button>
+            <button
+              onClick={() => onUpdateProjectSettings({ ...project, unitSystem: 'metric' })}
+              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                project.unitSystem === 'metric'
+                  ? 'bg-indigo-600 text-white font-extrabold shadow-sm'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              Metric (M)
+            </button>
+          </div>
+        </div>
+
         {/* Live Footprint Dimension Sliders */}
-        <div className="flex flex-col gap-3 mt-1.5">
+        <div className="flex flex-col gap-3 mt-1">
           {/* Width */}
           <div className="flex flex-col gap-1">
             <div className="flex justify-between text-[11px]">
               <span className="text-slate-400">Exterior Width</span>
-              <span className="font-mono text-slate-200 font-bold">{width.toFixed(1)}m <span className="text-[9px] text-slate-500">({Math.round(width * 3.28084)}ft)</span></span>
+              {project.unitSystem === 'imperial' ? (
+                <span className="font-mono text-slate-200 font-bold">
+                  {Math.round(width * 3.28084)}ft <span className="text-[9px] text-slate-500">({width.toFixed(1)}m)</span>
+                </span>
+              ) : (
+                <span className="font-mono text-slate-200 font-bold">
+                  {width.toFixed(1)}m <span className="text-[9px] text-slate-500">({Math.round(width * 3.28084)}ft)</span>
+                </span>
+              )}
             </div>
             <input
               type="range"
@@ -149,7 +320,15 @@ export default function ConstructionGuide({
           <div className="flex flex-col gap-1">
             <div className="flex justify-between text-[11px]">
               <span className="text-slate-400">Exterior Length</span>
-              <span className="font-mono text-slate-200 font-bold">{length.toFixed(1)}m <span className="text-[9px] text-slate-500">({Math.round(length * 3.28084)}ft)</span></span>
+              {project.unitSystem === 'imperial' ? (
+                <span className="font-mono text-slate-200 font-bold">
+                  {Math.round(length * 3.28084)}ft <span className="text-[9px] text-slate-500">({length.toFixed(1)}m)</span>
+                </span>
+              ) : (
+                <span className="font-mono text-slate-200 font-bold">
+                  {length.toFixed(1)}m <span className="text-[9px] text-slate-500">({Math.round(length * 3.28084)}ft)</span>
+                </span>
+              )}
             </div>
             <input
               type="range"
@@ -167,19 +346,102 @@ export default function ConstructionGuide({
         <div className="grid grid-cols-2 gap-2 mt-2 pt-2.5 border-t border-slate-800/80">
           <div className="bg-slate-950 p-2 rounded-lg border border-slate-900 text-center">
             <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold font-mono">Total Footprint</span>
-            <span className="block text-xs font-black text-slate-100 font-mono mt-0.5">{areaSqft.toLocaleString()} <span className="text-[9px] text-slate-400 font-medium">sq ft</span></span>
-            <span className="block text-[9px] text-slate-500 font-mono mt-0.5">{areaSqm.toFixed(1)} m²</span>
+            {project.unitSystem === 'imperial' ? (
+              <>
+                <span className="block text-xs font-black text-slate-100 font-mono mt-0.5">{areaSqft.toLocaleString()} <span className="text-[9px] text-slate-400 font-medium">sq ft</span></span>
+                <span className="block text-[9px] text-slate-500 font-mono mt-0.5">{areaSqm.toFixed(1)} m²</span>
+              </>
+            ) : (
+              <>
+                <span className="block text-xs font-black text-slate-100 font-mono mt-0.5">{areaSqm.toFixed(1)} <span className="text-[9px] text-slate-400 font-medium">m²</span></span>
+                <span className="block text-[9px] text-slate-500 font-mono mt-0.5">{areaSqft.toLocaleString()} sq ft</span>
+              </>
+            )}
           </div>
           <div className="bg-slate-950 p-2 rounded-lg border border-slate-900 text-center">
-            <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold font-mono">Perimeter shell</span>
-            <span className="block text-xs font-black text-slate-100 font-mono mt-0.5">{perimeterFt} <span className="text-[9px] text-slate-400 font-medium">ft</span></span>
-            <span className="block text-[9px] text-slate-500 font-mono mt-0.5">{perimeterM.toFixed(1)} m</span>
+            <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold font-mono">Perimeter Shell</span>
+            {project.unitSystem === 'imperial' ? (
+              <>
+                <span className="block text-xs font-black text-slate-100 font-mono mt-0.5">{perimeterFt} <span className="text-[9px] text-slate-400 font-medium">ft</span></span>
+                <span className="block text-[9px] text-slate-500 font-mono mt-0.5">{perimeterM.toFixed(1)} m</span>
+              </>
+            ) : (
+              <>
+                <span className="block text-xs font-black text-slate-100 font-mono mt-0.5">{perimeterM.toFixed(1)} <span className="text-[9px] text-slate-400 font-medium">m</span></span>
+                <span className="block text-[9px] text-slate-500 font-mono mt-0.5">{perimeterFt} ft</span>
+              </>
+            )}
           </div>
         </div>
 
         {/* Home Classification Badge */}
         <div className={`mt-2 text-center text-[10px] font-bold border rounded-lg py-1 px-1.5 leading-snug ${homeCategory.color}`}>
           {homeCategory.label}
+        </div>
+      </div>
+
+      {/* Designer Material Presets Section */}
+      <div className="flex flex-col gap-2 bg-slate-900/60 p-3.5 rounded-xl border border-slate-800/80">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-400 uppercase tracking-widest font-mono">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Designer Material Presets</span>
+          </div>
+        </div>
+        <p className="text-[10px] text-slate-400 leading-normal">
+          Apply a synchronized color & texture palette to all interior walls, exterior siding, floors, and roofs with one click.
+        </p>
+
+        <div className="grid grid-cols-2 gap-2 mt-1">
+          {MATERIAL_PRESETS.map((preset) => {
+            const isActive = 
+              project.floorMaterial === preset.floorMaterial &&
+              project.sidingType === preset.sidingType &&
+              project.sidingColor === preset.sidingColor &&
+              project.roofType === preset.roofType;
+
+            return (
+              <button
+                key={preset.id}
+                onClick={() => handleApplyPreset(preset)}
+                className={`text-left p-2.5 rounded-xl border flex flex-col justify-between gap-2.5 transition-all cursor-pointer hover:bg-slate-900/80 select-none ${
+                  isActive 
+                    ? 'bg-indigo-950/20 border-indigo-500 ring-1 ring-indigo-500/30' 
+                    : 'bg-slate-950/80 border-slate-850 hover:border-slate-800'
+                }`}
+              >
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-xs">{preset.emoji}</span>
+                    <span className="text-[11px] font-black text-slate-100 font-mono tracking-wide">{preset.name}</span>
+                    {isActive && (
+                      <span className="text-[8px] bg-indigo-500/20 text-indigo-300 font-mono px-1 py-0.2 rounded-full font-bold border border-indigo-500/30">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[9px] text-slate-400 leading-tight line-clamp-2">{preset.description}</p>
+                </div>
+
+                {/* Mood-board Swatch Preview */}
+                <div className="flex items-center gap-1 bg-slate-900/60 p-1 rounded-md border border-slate-800/40 w-fit">
+                  {preset.colors.map((color, cIdx) => (
+                    <span 
+                      key={cIdx} 
+                      className="w-2.5 h-2.5 rounded-sm border border-black/40 shadow-sm" 
+                      style={{ backgroundColor: color }}
+                      title={
+                        cIdx === 0 ? `Siding Color: ${color}` :
+                        cIdx === 1 ? `Floor Color: ${color}` :
+                        cIdx === 2 ? `Roof Color: ${color}` :
+                        `Interior Wall Color: ${color}`
+                      }
+                    />
+                  ))}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -15,7 +15,11 @@ import {
   Calendar,
   Layers,
   ChevronDown,
-  Info
+  Info,
+  AlertTriangle,
+  Download,
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react';
 import { HomeProject, FoundationType, SidingType, RoofType, FloorMaterial } from '../types';
 
@@ -105,6 +109,7 @@ export const getFurniturePrice = (catalogId: string): number => {
 export default function PricingMatrix({ project, onUpdateProjectSettings }: PricingMatrixProps) {
   const customPrices = project.customPrices || {};
   const selectedState = project.selectedState || 'US';
+  const targetBudget = project.targetBudget || 60000;
 
   // Retrieve current active prices (merging custom overrides with defaults)
   const getPrice = (key: string): number => {
@@ -129,6 +134,13 @@ export default function PricingMatrix({ project, onUpdateProjectSettings }: Pric
         customPrices: {}
       });
     }
+  };
+
+  const handleBudgetChange = (newBudget: number) => {
+    onUpdateProjectSettings({
+      ...project,
+      targetBudget: newBudget
+    });
   };
 
   // Dimensions & Calculations
@@ -185,14 +197,221 @@ export default function PricingMatrix({ project, onUpdateProjectSettings }: Pric
   const localizedSubtotal = rawSubtotal * multiplier;
   const grandTotal = localizedSubtotal + furnitureTotal;
 
+  // Budget Tracker Calculations
+  const budgetRatio = grandTotal / targetBudget;
+  const budgetPercent = Math.min(Math.round(budgetRatio * 100), 200);
+
+  // Dynamic visual price alerts
+  const priceAlerts = React.useMemo(() => {
+    const alerts: Array<{ type: 'error' | 'warning' | 'info'; title: string; desc: string; savings?: number }> = [];
+
+    // Over budget alert
+    if (grandTotal > targetBudget) {
+      alerts.push({
+        type: 'error',
+        title: 'Over Budget Alert',
+        desc: `Project is estimated at $${Math.round(grandTotal).toLocaleString()} which is $${Math.round(grandTotal - targetBudget).toLocaleString()} over your target budget limit!`,
+      });
+    }
+
+    // Foundation price alert
+    if (fType === 'basement') {
+      const slabSave = foundationCost - (areaSqft * DEFAULT_UNIT_PRICES.found_slab);
+      if (slabSave > 500) {
+        alerts.push({
+          type: 'warning',
+          title: 'Premium Foundation Cost',
+          desc: `Basement foundation ($${foundationRate.toFixed(2)}/sqft) is premium. Swapping to Slab-on-grade ($12.50/sqft) could save you around $${Math.round(slabSave * multiplier).toLocaleString()}.`,
+          savings: Math.round(slabSave * multiplier)
+        });
+      }
+    }
+
+    // Siding price alert
+    if (sType === 'brick') {
+      const vinylSave = sidingCost - (totalWallAreaSqft * DEFAULT_UNIT_PRICES.side_vinyl);
+      if (vinylSave > 500) {
+        alerts.push({
+          type: 'warning',
+          title: 'High-Index Siding Cost',
+          desc: `Flemish Brick siding ($${sidingRate.toFixed(2)}/sqft) adds high cost. Swapping to Vinyl siding ($7.50/sqft) would reduce cost by $${Math.round(vinylSave * multiplier).toLocaleString()}.`,
+          savings: Math.round(vinylSave * multiplier)
+        });
+      }
+    }
+
+    // Flooring price alert
+    if (project.floorMaterial === 'marble') {
+      const woodSave = flooringCost - (areaSqft * DEFAULT_UNIT_PRICES.floor_hardwood);
+      if (woodSave > 500) {
+        alerts.push({
+          type: 'warning',
+          title: 'Luxury Flooring Cost',
+          desc: `Royal Marble flooring ($${floorRate.toFixed(2)}/sqft) is a luxury finish. Downgrading to Birch Hardwood ($9.50/sqft) could save $${Math.round(woodSave * multiplier).toLocaleString()}.`,
+          savings: Math.round(woodSave * multiplier)
+        });
+      }
+    }
+
+    return alerts;
+  }, [grandTotal, targetBudget, fType, sType, project.floorMaterial, foundationCost, sidingCost, flooringCost, areaSqft, totalWallAreaSqft, multiplier]);
+
+  // Handle Export Bill of Materials
+  const handleExportBOM = () => {
+    const csvRows = [
+      ['BILL OF MATERIALS (BOM) REPORT', '', '', '', '', '', ''],
+      ['Project Name', project.name, '', '', 'Date/Time', new Date().toLocaleString(), ''],
+      ['Sourcing Region', stateObj.name, '', '', 'Currency', 'USD ($)', ''],
+      ['Total Footprint Area', `${Math.round(areaSqft).toLocaleString()} Sq Ft (${areaSqm.toFixed(1)} m²)`, '', '', 'Perimeter Shell', `${Math.round(perimeterFt)} Ft`, ''],
+      [],
+      ['Category', 'Item Description', 'Quantity', 'Unit', 'Unit Rate ($)', 'Line Total ($)', 'Notes / Properties'],
+      ['Foundation', `${fType.toUpperCase()} Foundation`, Math.round(areaSqft).toLocaleString(), 'Sq Ft', foundationRate.toFixed(2), foundationCost.toFixed(2), `Foundation type: ${fType}`],
+      ['Siding & Framing', `${sType.toUpperCase()} Exterior Walls`, Math.round(totalWallAreaSqft).toLocaleString(), 'Sq Ft (Wall)', sidingRate.toFixed(2), sidingCost.toFixed(2), `Exterior wall finish: ${sType}`],
+      ['Roofing', `${rType.toUpperCase()} Roof structure`, rType !== 'none' ? '1' : '0', 'Lump Sum', rType !== 'none' ? (roofCost).toFixed(2) : '0.00', roofCost.toFixed(2), `Overhang: ${project.roofOverhang ?? 0.3}m, Pitch Factor: ${project.roofPitch ?? 0.35}`],
+      ['Flooring Finish', `${project.floorMaterial.toUpperCase()} Flooring`, Math.round(areaSqft).toLocaleString(), 'Sq Ft', floorRate.toFixed(2), flooringCost.toFixed(2), `Finish material: ${project.floorMaterial}`],
+      ['General Labor', 'Licensed General Contractor Labor', Math.round(areaSqft).toLocaleString(), 'Sq Ft (Floor)', laborRate.toFixed(2), baseLaborCost.toFixed(2), 'Baseline construction labor hours'],
+      ['Subtotal Offset', `Regional ${stateObj.name} adjustment`, '1', 'Multiplier', `x${multiplier.toFixed(2)}`, (localizedSubtotal - rawSubtotal).toFixed(2), `Sourcing index adjustment for ${stateObj.code}`],
+    ];
+
+    // Furniture list
+    if (project.furniture.length > 0) {
+      csvRows.push([]);
+      csvRows.push(['FURNITURE & ACCENTS DECOR INVENTORY', '', '', '', '', '', '']);
+      project.furniture.forEach((f) => {
+        csvRows.push([
+          'Interior Decor',
+          f.name,
+          '1',
+          'Unit',
+          getFurniturePrice(f.catalogId).toFixed(2),
+          getFurniturePrice(f.catalogId).toFixed(2),
+          `Placed in ${f.category} zone, Material: ${f.materialType}`
+        ]);
+      });
+    }
+
+    // Totals
+    csvRows.push([]);
+    csvRows.push(['', '', '', '', 'SUBTOTAL MATERIALS & LABOR', `$${localizedSubtotal.toFixed(2)}`, '']);
+    csvRows.push(['', '', '', '', 'SUBTOTAL INTERIOR DECOR', `$${furnitureTotal.toFixed(2)}`, '']);
+    csvRows.push(['', '', '', '', 'ESTIMATED GRAND TOTAL', `$${grandTotal.toFixed(2)}`, '']);
+    csvRows.push(['', '', '', '', 'TARGET BUDGET LIMIT', `$${targetBudget.toFixed(2)}`, grandTotal <= targetBudget ? 'WITHIN BUDGET' : 'OVER BUDGET']);
+
+    // Build CSV Content
+    const csvContent = '\uFEFF' + csvRows.map(e => e.map(val => {
+      const strVal = val ? val.toString() : '';
+      return `"${strVal.replace(/"/g, '""')}"`;
+    }).join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${project.name.toLowerCase().replace(/\s+/g, '_')}_bill_of_materials.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="flex flex-col gap-5 py-1">
+      {/* Total Budget Tracker Dashboard Component */}
+      <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-xl flex flex-col gap-3">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-400 uppercase tracking-widest font-mono">
+            <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Total Budget Tracker</span>
+          </div>
+          <span className={`text-[10px] font-black font-mono px-2 py-0.5 rounded-full ${
+            grandTotal <= targetBudget 
+              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+          }`}>
+            {grandTotal <= targetBudget ? 'Under Budget' : 'Over Budget!'}
+          </span>
+        </div>
+
+        {/* Budget Progress Bar */}
+        <div className="flex flex-col gap-1.5 mt-1">
+          <div className="flex justify-between text-xs font-mono">
+            <span className="text-slate-400">Current Cost: <span className="font-bold text-white">${Math.round(grandTotal).toLocaleString()}</span></span>
+            <span className="text-slate-400">Limit: <span className="font-bold text-slate-200">${targetBudget.toLocaleString()}</span></span>
+          </div>
+          <div className="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800/85">
+            <div 
+              className={`h-full transition-all duration-500 ${
+                budgetRatio <= 0.8
+                  ? 'bg-emerald-500'
+                  : budgetRatio <= 1.0
+                    ? 'bg-amber-500'
+                    : 'bg-rose-500 animate-pulse'
+              }`}
+              style={{ width: `${budgetPercent}%` }}
+            />
+          </div>
+          <div className="flex justify-between items-center text-[10px] text-slate-500 font-mono">
+            <span>{budgetPercent}% of Target</span>
+            <span>${Math.max(0, Math.round(targetBudget - grandTotal)).toLocaleString()} Remaining</span>
+          </div>
+        </div>
+
+        {/* Target Budget Slider Configuration */}
+        <div className="flex flex-col gap-1 pt-1 border-t border-slate-800/40 mt-1">
+          <div className="flex justify-between text-[11px]">
+            <span className="text-slate-400">Adjust Target Budget Limit</span>
+            <span className="font-mono text-indigo-400 font-extrabold">${targetBudget.toLocaleString()}</span>
+          </div>
+          <input
+            type="range"
+            min="20000"
+            max="180000"
+            step="5000"
+            value={targetBudget}
+            onChange={(e) => handleBudgetChange(parseInt(e.target.value))}
+            className="w-full accent-emerald-500 h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer"
+          />
+        </div>
+      </div>
+
+      {/* Visual Price Alerts & Suggestions */}
+      {priceAlerts.length > 0 && (
+        <div className="flex flex-col gap-2.5">
+          <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5 font-mono">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+            <span>Visual Cost Sourcing Alerts ({priceAlerts.length})</span>
+          </span>
+
+          <div className="flex flex-col gap-2">
+            {priceAlerts.map((alert, index) => (
+              <div 
+                key={index} 
+                className={`p-3 rounded-xl border flex gap-2.5 transition-all ${
+                  alert.type === 'error'
+                    ? 'bg-rose-950/20 border-rose-900/30 text-rose-200'
+                    : 'bg-amber-950/25 border-amber-900/30 text-amber-200'
+                }`}
+              >
+                {alert.type === 'error' ? (
+                  <AlertCircle className="w-4.5 h-4.5 text-rose-500 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertTriangle className="w-4.5 h-4.5 text-amber-500 shrink-0 mt-0.5" />
+                )}
+                <div className="flex-1 flex flex-col gap-0.5">
+                  <span className="text-xs font-black font-mono uppercase tracking-wide">{alert.title}</span>
+                  <p className="text-[10px] leading-relaxed opacity-90">{alert.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Dynamic Summary Panel */}
       <div className="bg-gradient-to-br from-indigo-950/60 to-slate-900/80 p-4 rounded-xl border border-indigo-500/20 shadow-xl flex flex-col gap-3.5">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-400 uppercase tracking-widest font-mono">
             <Calculator className="w-3.5 h-3.5" />
-            <span>Project Estimation</span>
+            <span>Cost Invoice breakdown</span>
           </div>
           <button
             onClick={handleResetPrices}
@@ -247,6 +466,16 @@ export default function PricingMatrix({ project, onUpdateProjectSettings }: Pric
             *Includes {Math.round(areaSqft).toLocaleString()} sqft footprint calculations localized for <span className="font-semibold text-slate-400">{stateObj.name}</span>.
           </div>
         </div>
+
+        {/* Export Bill of Materials Action Button */}
+        <button
+          onClick={handleExportBOM}
+          title="Download full Excel-compatible Bill of Materials CSV"
+          className="w-full bg-indigo-650 hover:bg-indigo-600 active:bg-indigo-750 text-white font-black text-xs py-2.5 px-3 rounded-xl border border-indigo-500/30 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-950/30 font-mono uppercase tracking-wide select-none"
+        >
+          <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-300" />
+          <span>Export Bill of Materials (.csv)</span>
+        </button>
       </div>
 
       {/* Monthly Rate Configuration Matrix (Interactive) */}
