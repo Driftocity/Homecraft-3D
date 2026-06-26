@@ -36,6 +36,15 @@ const INITIAL_PROJECT: HomeProject = {
   floorMaterial: 'hardwood',
   floorColor: '#eab308', // Birch wood
   dimensions: { width: 10, length: 10 },
+  foundationType: 'slab',
+  foundationHeight: 0.2,
+  foundationColor: '#64748b',
+  sidingType: 'vinyl',
+  sidingColor: '#f1f5f9',
+  roofType: 'gabled',
+  roofColor: '#334155',
+  roofPitch: 0.35,
+  roofOverhang: 0.3,
   walls: [
     // Closed outer room loop (10m x 10m)
     { id: 'wall-north', p1: { x: -5, y: -5 }, p2: { x: 5, y: -5 }, height: 2.8, thickness: 0.15, color: '#f8fafc' },
@@ -238,14 +247,9 @@ export default function App() {
     setActivePlacingCatalogId(null);
   };
 
-  // Update global floor materials / colors / name
-  const handleUpdateFloorSettings = (settings: { floorMaterial: FloorMaterial; floorColor: string; name: string }) => {
-    setProject((prev) => ({
-      ...prev,
-      name: settings.name,
-      floorMaterial: settings.floorMaterial,
-      floorColor: settings.floorColor,
-    }));
+  // Update global project/structural/floor settings
+  const handleUpdateProjectSettings = (updatedProject: HomeProject) => {
+    setProject(updatedProject);
   };
 
   // Clear workspace
@@ -696,7 +700,7 @@ export default function App() {
               setIsInspectorOpen(false);
             }}
             onDuplicateFurniture={handleDuplicateFurniture}
-            onUpdateFloorSettings={handleUpdateFloorSettings}
+            onUpdateProjectSettings={handleUpdateProjectSettings}
             onCloseMobile={() => setIsInspectorOpen(false)}
           />
         </div>

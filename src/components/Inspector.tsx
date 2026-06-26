@@ -25,7 +25,7 @@ interface InspectorProps {
   onUpdateFurniture: (updated: Furniture) => void;
   onDeleteFurniture: (id: string) => void;
   onDuplicateFurniture: (item: Furniture) => void;
-  onUpdateFloorSettings: (settings: { floorMaterial: FloorMaterial; floorColor: string; name: string }) => void;
+  onUpdateProjectSettings: (project: HomeProject) => void;
   onCloseMobile?: () => void;
 }
 
@@ -54,7 +54,7 @@ export default function Inspector({
   onUpdateFurniture,
   onDeleteFurniture,
   onDuplicateFurniture,
-  onUpdateFloorSettings,
+  onUpdateProjectSettings,
   onCloseMobile
 }: InspectorProps) {
 
@@ -308,7 +308,7 @@ export default function Inspector({
               <input
                 type="text"
                 value={project.name}
-                onChange={(e) => onUpdateFloorSettings({ ...project, name: e.target.value, floorColor: project.floorColor, floorMaterial: project.floorMaterial })}
+                onChange={(e) => onUpdateProjectSettings({ ...project, name: e.target.value })}
                 className="bg-transparent border-b border-transparent hover:border-slate-800 focus:border-indigo-500 text-xs font-bold text-white focus:outline-none py-0.5 transition"
                 placeholder="My Blueprint"
               />
@@ -337,11 +337,199 @@ export default function Inspector({
               </div>
             </div>
 
-            {/* Floor Texture Customization */}
+            {/* 1. FOUNDATION BUILDING CONTROLS */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <Layers className="w-3.5 h-3.5 text-indigo-400" />
+                <span>1. Foundation Layer</span>
+              </div>
+              <div className="flex flex-col gap-3 bg-slate-900/40 p-3 rounded-xl border border-slate-800/40">
+                {/* Type */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Foundation Type</label>
+                  <select
+                    value={project.foundationType || 'slab'}
+                    onChange={(e) => onUpdateProjectSettings({
+                      ...project,
+                      foundationType: e.target.value as any
+                    })}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                  >
+                    <option value="slab">🏢 Concrete Slab on Grade</option>
+                    <option value="crawlspace">🧱 Raised Brick Crawlspace</option>
+                    <option value="basement">🕳️ Full Concrete Basement</option>
+                  </select>
+                </div>
+
+                {/* Foundation Height */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-400">Foundation Height</span>
+                    <span className="font-mono text-slate-200 font-semibold">{(project.foundationHeight ?? 0.2).toFixed(2)}m</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="2.5"
+                    step="0.05"
+                    value={project.foundationHeight ?? 0.2}
+                    onChange={(e) => onUpdateProjectSettings({
+                      ...project,
+                      foundationHeight: parseFloat(e.target.value)
+                    })}
+                    className="w-full accent-indigo-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                  />
+                </div>
+
+                {/* Foundation Color */}
+                <div className="flex items-center justify-between gap-3 bg-slate-900 p-2 rounded-lg border border-slate-800">
+                  <span className="text-[10px] text-slate-400 font-medium">Foundation Tint</span>
+                  <input
+                    type="color"
+                    value={project.foundationColor || '#64748b'}
+                    onChange={(e) => onUpdateProjectSettings({
+                      ...project,
+                      foundationColor: e.target.value
+                    })}
+                    className="w-7 h-7 rounded-md border border-slate-700 bg-transparent cursor-pointer p-0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 2. WALL SIDING CONTROLS */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <Home className="w-3.5 h-3.5 text-rose-400" />
+                <span>2. Wall Siding & Framing</span>
+              </div>
+              <div className="flex flex-col gap-3 bg-slate-900/40 p-3 rounded-xl border border-slate-800/40">
+                {/* Siding material type */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Exterior Material</label>
+                  <select
+                    value={project.sidingType || 'vinyl'}
+                    onChange={(e) => onUpdateProjectSettings({
+                      ...project,
+                      sidingType: e.target.value as any
+                    })}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                  >
+                    <option value="vinyl">📐 Horizontal Vinyl Siding</option>
+                    <option value="brick">🧱 Classic Flemish Red Brick</option>
+                    <option value="stucco">🏜️ Fine Textured Stucco</option>
+                    <option value="wood">🪵 Rustic Vertical Wood Siding</option>
+                  </select>
+                </div>
+
+                {/* Siding paint color */}
+                <div className="flex items-center justify-between gap-3 bg-slate-900 p-2 rounded-lg border border-slate-800">
+                  <span className="text-[10px] text-slate-400 font-medium">Exterior Paint Color</span>
+                  <input
+                    type="color"
+                    value={project.sidingColor || '#f1f5f9'}
+                    onChange={(e) => onUpdateProjectSettings({
+                      ...project,
+                      sidingColor: e.target.value
+                    })}
+                    className="w-7 h-7 rounded-md border border-slate-700 bg-transparent cursor-pointer p-0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 3. ROOF BUILDING CONTROLS */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <Palette className="w-3.5 h-3.5 text-sky-400" />
+                <span>3. Roof Structure</span>
+              </div>
+              <div className="flex flex-col gap-3 bg-slate-900/40 p-3 rounded-xl border border-slate-800/40">
+                {/* Roof type selection */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Roofing Style</label>
+                  <select
+                    value={project.roofType || 'none'}
+                    onChange={(e) => onUpdateProjectSettings({
+                      ...project,
+                      roofType: e.target.value as any
+                    })}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                  >
+                    <option value="gabled">🔺 Classical Gabled Peak</option>
+                    <option value="hipped">🏠 Four-Sided Hipped Roof</option>
+                    <option value="flat">🟥 Modernist Flat Top</option>
+                    <option value="none">🟩 No Roof (See interior easily)</option>
+                  </select>
+                </div>
+
+                {/* Roof Pitch */}
+                {project.roofType && project.roofType !== 'none' && (
+                  <>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-slate-400">Roof Pitch (Slope)</span>
+                        <span className="font-mono text-slate-200 font-semibold">{(project.roofPitch ?? 0.35).toFixed(2)}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.1"
+                        max="1.2"
+                        step="0.05"
+                        value={project.roofPitch ?? 0.35}
+                        onChange={(e) => onUpdateProjectSettings({
+                          ...project,
+                          roofPitch: parseFloat(e.target.value)
+                        })}
+                        className="w-full accent-indigo-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Roof Overhang */}
+                    <div className="flex flex-col gap-1">
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-slate-400">Overhang (Width)</span>
+                        <span className="font-mono text-slate-200 font-semibold">{(project.roofOverhang ?? 0.3).toFixed(2)}m</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.0"
+                        max="1.2"
+                        step="0.05"
+                        value={project.roofOverhang ?? 0.3}
+                        onChange={(e) => onUpdateProjectSettings({
+                          ...project,
+                          roofOverhang: parseFloat(e.target.value)
+                        })}
+                        className="w-full accent-indigo-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Roof Shingles color */}
+                {project.roofType && project.roofType !== 'none' && (
+                  <div className="flex items-center justify-between gap-3 bg-slate-900 p-2 rounded-lg border border-slate-800">
+                    <span className="text-[10px] text-slate-400 font-medium">Shingles Color</span>
+                    <input
+                      type="color"
+                      value={project.roofColor || '#334155'}
+                      onChange={(e) => onUpdateProjectSettings({
+                        ...project,
+                        roofColor: e.target.value
+                      })}
+                      className="w-7 h-7 rounded-md border border-slate-700 bg-transparent cursor-pointer p-0"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 4. FLOOR TEXTURE OPTIONS */}
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 <Palette className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Floor Finish Options</span>
+                <span>4. Floor Finish Options</span>
               </div>
 
               <div className="flex flex-col gap-3 bg-slate-900/40 p-3 rounded-xl border border-slate-800/40">
@@ -350,11 +538,9 @@ export default function Inspector({
                   <label className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Material Base</label>
                   <select
                     value={project.floorMaterial}
-                    onChange={(e) => onUpdateFloorSettings({
+                    onChange={(e) => onUpdateProjectSettings({
                       ...project,
-                      floorMaterial: e.target.value as FloorMaterial,
-                      floorColor: project.floorColor,
-                      name: project.name
+                      floorMaterial: e.target.value as FloorMaterial
                     })}
                     className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                   >
@@ -373,11 +559,9 @@ export default function Inspector({
                     {FLOOR_PRESETS.map((fcol) => (
                       <button
                         key={fcol.hex}
-                        onClick={() => onUpdateFloorSettings({
+                        onClick={() => onUpdateProjectSettings({
                           ...project,
-                          floorColor: fcol.hex,
-                          floorMaterial: project.floorMaterial,
-                          name: project.name
+                          floorColor: fcol.hex
                         })}
                         title={fcol.name}
                         style={{ backgroundColor: fcol.hex }}
@@ -397,11 +581,9 @@ export default function Inspector({
                     <input
                       type="color"
                       value={project.floorColor}
-                      onChange={(e) => onUpdateFloorSettings({
+                      onChange={(e) => onUpdateProjectSettings({
                         ...project,
-                        floorColor: e.target.value,
-                        floorMaterial: project.floorMaterial,
-                        name: project.name
+                        floorColor: e.target.value
                       })}
                       className="w-7 h-7 rounded-md border border-slate-700 bg-transparent cursor-pointer p-0"
                     />

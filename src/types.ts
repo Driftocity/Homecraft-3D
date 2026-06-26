@@ -51,6 +51,10 @@ export interface CatalogItem {
   description: string;
 }
 
+export type FoundationType = 'slab' | 'crawlspace' | 'basement';
+export type SidingType = 'vinyl' | 'brick' | 'stucco' | 'wood';
+export type RoofType = 'none' | 'gabled' | 'hipped' | 'flat';
+
 export interface HomeProject {
   id: string;
   name: string;
@@ -62,6 +66,15 @@ export interface HomeProject {
     width: number; // in meters (e.g. 15)
     length: number; // in meters (e.g. 15)
   };
+  foundationType?: FoundationType;
+  foundationHeight?: number;
+  foundationColor?: string;
+  sidingType?: SidingType;
+  sidingColor?: string;
+  roofType?: RoofType;
+  roofColor?: string;
+  roofPitch?: number; // 0.1 to 1.0 (multiplier/factor)
+  roofOverhang?: number; // overhang in meters (e.g. 0.3)
 }
 
 export interface AILayoutResponse {

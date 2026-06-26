@@ -59,6 +59,7 @@ export default function ThreeCanvas({
 
   // Trigger re-texture when floor settings change
   const floorTextureCacheRef = useRef<{ [key: string]: THREE.CanvasTexture }>({});
+  const sidingTextureCacheRef = useRef<{ [key: string]: THREE.CanvasTexture }>({});
 
   // Generate procedural textures
   const getFloorTexture = (material: FloorMaterial, hexColor: string): THREE.CanvasTexture => {
@@ -183,6 +184,113 @@ export default function ThreeCanvas({
     texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(8, 8); // Repeat over floor
     floorTextureCacheRef.current[key] = texture;
+    return texture;
+  };
+
+  const getSidingTexture = (material: string, hexColor: string): THREE.CanvasTexture => {
+    const key = `${material}-${hexColor}`;
+    if (sidingTextureCacheRef.current[key]) {
+      return sidingTextureCacheRef.current[key];
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.fillStyle = hexColor;
+    ctx.fillRect(0, 0, 256, 256);
+
+    switch (material) {
+      case 'vinyl': {
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)';
+        ctx.lineWidth = 1.5;
+        const plankHeight = 16;
+        for (let y = 0; y < 256; y += plankHeight) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(256, y);
+          ctx.stroke();
+
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(0, y + 1);
+          ctx.lineTo(256, y + 1);
+          ctx.stroke();
+
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)';
+          ctx.lineWidth = 1.5;
+        }
+        break;
+      }
+      case 'brick': {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+        ctx.lineWidth = 2;
+        const brickHeight = 16;
+        const brickWidth = 32;
+
+        for (let y = 0; y < 256; y += brickHeight) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(256, y);
+          ctx.stroke();
+
+          const offset = (y / brickHeight) % 2 === 0 ? 0 : brickWidth / 2;
+          ctx.beginPath();
+          for (let x = offset; x < 256 + brickWidth; x += brickWidth) {
+            ctx.moveTo(x % 256, y);
+            ctx.lineTo(x % 256, y + brickHeight);
+          }
+          ctx.stroke();
+        }
+
+        for (let i = 0; i < 2000; i++) {
+          const x = Math.random() * 256;
+          const y = Math.random() * 256;
+          ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.03)';
+          ctx.fillRect(x, y, 1, 1);
+        }
+        break;
+      }
+      case 'wood': {
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+        ctx.lineWidth = 1.5;
+        const plankWidth = 16;
+        for (let x = 0; x < 256; x += plankWidth) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, 256);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = 'rgba(0,0,0,0.02)';
+        for (let i = 0; i < 80; i++) {
+          const w = Math.random() * 2 + 1;
+          const h = Math.random() * 120 + 30;
+          const x = Math.random() * 256;
+          const y = Math.random() * 256;
+          ctx.fillRect(x, y, w, h);
+        }
+        break;
+      }
+      case 'stucco': {
+        for (let i = 0; i < 5000; i++) {
+          const x = Math.random() * 256;
+          const y = Math.random() * 256;
+          const size = Math.random() * 1.5 + 0.5;
+          ctx.fillStyle = Math.random() > 0.55 ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)';
+          ctx.fillRect(x, y, size, size);
+        }
+        break;
+      }
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(4, 2);
+    sidingTextureCacheRef.current[key] = texture;
     return texture;
   };
 
@@ -390,12 +498,135 @@ export default function ThreeCanvas({
         child.name === 'house-floor' ||
         child.name === 'house-grid' ||
         child.name.startsWith('wall-') ||
+        child.name.startsWith('foundation-') ||
+        child.name.startsWith('roof-') ||
         child.name === 'placement-preview'
       ) {
         toRemove.push(child);
       }
     });
     toRemove.forEach((child) => scene.remove(child));
+
+    // 0. Render Foundation
+    const foundType = project.foundationType || 'slab';
+    const foundHeight = project.foundationHeight ?? 0.2;
+    const foundColor = project.foundationColor || '#64748b';
+
+    if (foundType === 'slab') {
+      const slabGeo = new THREE.BoxGeometry(project.dimensions.width, foundHeight, project.dimensions.length);
+      const slabMat = new THREE.MeshStandardMaterial({
+        color: foundColor,
+        roughness: 0.9,
+        metalness: 0.1
+      });
+      const slabMesh = new THREE.Mesh(slabGeo, slabMat);
+      slabMesh.name = 'foundation-slab';
+      slabMesh.position.set(0, -foundHeight / 2, 0);
+      slabMesh.receiveShadow = true;
+      slabMesh.castShadow = true;
+      scene.add(slabMesh);
+    } else if (foundType === 'crawlspace') {
+      // Raised crawlspace floor slab (top deck)
+      const slabGeo = new THREE.BoxGeometry(project.dimensions.width, 0.1, project.dimensions.length);
+      const slabMat = new THREE.MeshStandardMaterial({
+        color: foundColor,
+        roughness: 0.85
+      });
+      const slabMesh = new THREE.Mesh(slabGeo, slabMat);
+      slabMesh.name = 'foundation-crawl-slab';
+      slabMesh.position.set(0, -0.05, 0);
+      slabMesh.receiveShadow = true;
+      scene.add(slabMesh);
+
+      // Support pillars (corners + midpoint grid)
+      const pillarSize = 0.45;
+      const pillarGeo = new THREE.BoxGeometry(pillarSize, foundHeight, pillarSize);
+      const pillarMat = new THREE.MeshStandardMaterial({
+        color: '#991b1b', // Brick Red colored piers
+        roughness: 0.95
+      });
+
+      const wHalf = project.dimensions.width / 2;
+      const lHalf = project.dimensions.length / 2;
+      const pillarPositions = [
+        { x: -wHalf + pillarSize / 2, z: -lHalf + pillarSize / 2 },
+        { x: wHalf - pillarSize / 2, z: -lHalf + pillarSize / 2 },
+        { x: wHalf - pillarSize / 2, z: lHalf - pillarSize / 2 },
+        { x: -wHalf + pillarSize / 2, z: lHalf - pillarSize / 2 },
+      ];
+
+      // Midpoints
+      if (project.dimensions.width > 5) {
+        pillarPositions.push({ x: 0, z: -lHalf + pillarSize / 2 });
+        pillarPositions.push({ x: 0, z: lHalf - pillarSize / 2 });
+      }
+      if (project.dimensions.length > 5) {
+        pillarPositions.push({ x: -wHalf + pillarSize / 2, z: 0 });
+        pillarPositions.push({ x: wHalf - pillarSize / 2, z: 0 });
+      }
+      pillarPositions.push({ x: 0, z: 0 });
+
+      pillarPositions.forEach((pos, idx) => {
+        const pillarMesh = new THREE.Mesh(pillarGeo, pillarMat);
+        pillarMesh.name = `foundation-pillar-${idx}`;
+        pillarMesh.position.set(pos.x, -foundHeight / 2, pos.z);
+        pillarMesh.castShadow = true;
+        pillarMesh.receiveShadow = true;
+        scene.add(pillarMesh);
+      });
+    } else if (foundType === 'basement') {
+      // Full underground basement floor slab
+      const bFloorGeo = new THREE.BoxGeometry(project.dimensions.width - 0.2, 0.1, project.dimensions.length - 0.2);
+      const bFloorMat = new THREE.MeshStandardMaterial({
+        color: '#475569',
+        roughness: 0.9
+      });
+      const bFloorMesh = new THREE.Mesh(bFloorGeo, bFloorMat);
+      bFloorMesh.name = 'foundation-basement-floor';
+      bFloorMesh.position.set(0, -foundHeight + 0.05, 0);
+      bFloorMesh.receiveShadow = true;
+      scene.add(bFloorMesh);
+
+      // Basement perimeter walls
+      const bWallThickness = 0.25;
+      const bWallGeoNorthSouth = new THREE.BoxGeometry(project.dimensions.width, foundHeight, bWallThickness);
+      const bWallGeoEastWest = new THREE.BoxGeometry(bWallThickness, foundHeight, project.dimensions.length - bWallThickness * 2);
+      const bWallMat = new THREE.MeshStandardMaterial({
+        color: foundColor,
+        roughness: 0.95
+      });
+
+      const wHalf = project.dimensions.width / 2;
+      const lHalf = project.dimensions.length / 2;
+
+      const wallN = new THREE.Mesh(bWallGeoNorthSouth, bWallMat);
+      wallN.name = 'foundation-basement-wall-n';
+      wallN.position.set(0, -foundHeight / 2, -lHalf + bWallThickness / 2);
+      wallN.receiveShadow = true;
+      wallN.castShadow = true;
+      scene.add(wallN);
+
+      const wallS = new THREE.Mesh(bWallGeoNorthSouth, bWallMat);
+      wallS.name = 'foundation-basement-wall-s';
+      wallS.position.set(0, -foundHeight / 2, lHalf - bWallThickness / 2);
+      wallS.receiveShadow = true;
+      wallS.castShadow = true;
+      scene.add(wallS);
+
+      const wallE = new THREE.Mesh(bWallGeoEastWest, bWallMat);
+      wallE.name = 'foundation-basement-wall-e';
+      wallE.position.set(wHalf - bWallThickness / 2, -foundHeight / 2, 0);
+      wallE.receiveShadow = true;
+      wallE.castShadow = true;
+      scene.add(wallE);
+
+      const wallW = new THREE.Mesh(bWallGeoEastWest, bWallMat);
+      wallW.name = 'foundation-basement-wall-w';
+      wallW.position.set(-wHalf + bWallThickness / 2, -foundHeight / 2, 0);
+      wallW.receiveShadow = true;
+      wallW.castShadow = true;
+      scene.add(wallW);
+    }
 
     // 1. Render House Floor
     const floorGeo = new THREE.PlaneGeometry(project.dimensions.width, project.dimensions.length);
@@ -412,7 +643,7 @@ export default function ThreeCanvas({
     floorMesh.receiveShadow = true;
     scene.add(floorMesh);
 
-    // 2. Render subtle Grid overlay in 2D mode or 3D
+    // 2. Render subtle Grid overlay
     const gridHelper = new THREE.GridHelper(
       Math.max(project.dimensions.width, project.dimensions.length),
       Math.max(project.dimensions.width, project.dimensions.length),
@@ -420,7 +651,7 @@ export default function ThreeCanvas({
       '#f1f5f9'  // Slate 100
     );
     gridHelper.name = 'house-grid';
-    gridHelper.position.y = 0.002; // just over floor surface
+    gridHelper.position.y = 0.002;
     scene.add(gridHelper);
 
     // 3. Render Walls
@@ -428,17 +659,22 @@ export default function ThreeCanvas({
       const p1 = new THREE.Vector3(wall.p1.x, 0, wall.p1.y);
       const p2 = new THREE.Vector3(wall.p2.x, 0, wall.p2.y);
 
-      // Calculate wall properties
       const distance = p1.distanceTo(p2);
       const midpoint = p1.clone().add(p2).multiplyScalar(0.5);
       const angle = Math.atan2(p2.z - p1.z, p2.x - p1.x);
 
-      // Create Wall Geometry
       const wallGeo = new THREE.BoxGeometry(distance, wall.height, wall.thickness);
-      const wallColor = wall.id === selectedWallId ? '#2563eb' : (wall.color || '#e2e8f0'); // Highlight selected wall in blue
+      
+      // Use wall siding texture
+      const sidingTex = getSidingTexture(project.sidingType || 'vinyl', project.sidingColor || '#f1f5f9');
+      const wallTex = sidingTex.clone();
+      wallTex.needsUpdate = true;
+      wallTex.repeat.set(distance, wall.height);
+
       const wallMat = new THREE.MeshStandardMaterial({
-        color: wallColor,
-        roughness: 0.8,
+        color: wall.id === selectedWallId ? '#2563eb' : '#ffffff',
+        map: wall.id === selectedWallId ? null : wallTex,
+        roughness: 0.75,
         metalness: 0.05,
       });
 
@@ -446,12 +682,138 @@ export default function ThreeCanvas({
       wallMesh.name = `wall-${wall.id}`;
       wallMesh.userData = { id: wall.id, isWall: true };
       wallMesh.position.set(midpoint.x, wall.height / 2, midpoint.z);
-      wallMesh.rotation.y = -angle; // rotate to align between points
+      wallMesh.rotation.y = -angle;
       wallMesh.castShadow = true;
       wallMesh.receiveShadow = true;
 
       scene.add(wallMesh);
     });
+
+    // 3.5 Render Roof System
+    const roofType = project.roofType || 'none';
+    if (roofType !== 'none') {
+      const wallHeight = project.walls[0]?.height || 2.8;
+      const roofColor = project.roofColor || '#334155';
+      const roofPitch = project.roofPitch ?? 0.35;
+      const roofOverhang = project.roofOverhang ?? 0.3;
+
+      const rWidth = project.dimensions.width + roofOverhang * 2;
+      const rLength = project.dimensions.length + roofOverhang * 2;
+
+      const roofMat = new THREE.MeshStandardMaterial({
+        color: roofColor,
+        roughness: 0.8,
+        metalness: 0.1
+      });
+
+      if (roofType === 'flat') {
+        const flatGeo = new THREE.BoxGeometry(rWidth, 0.18, rLength);
+        const flatMesh = new THREE.Mesh(flatGeo, roofMat);
+        flatMesh.name = 'roof-flat';
+        flatMesh.position.set(0, wallHeight + 0.09, 0);
+        flatMesh.castShadow = true;
+        flatMesh.receiveShadow = true;
+        scene.add(flatMesh);
+
+        // Fascia caps
+        const edgeThick = 0.04;
+        const edgeHeight = 0.3;
+        const edgeGeoNS = new THREE.BoxGeometry(rWidth, edgeHeight, edgeThick);
+        const edgeGeoEW = new THREE.BoxGeometry(edgeThick, edgeHeight, rLength - edgeThick * 2);
+        const fasciaMat = new THREE.MeshStandardMaterial({
+          color: project.sidingColor || '#f1f5f9',
+          roughness: 0.6
+        });
+
+        const fN = new THREE.Mesh(edgeGeoNS, fasciaMat);
+        fN.name = 'roof-fascia-n';
+        fN.position.set(0, wallHeight + edgeHeight / 2, -rLength / 2 + edgeThick / 2);
+        scene.add(fN);
+
+        const fS = new THREE.Mesh(edgeGeoNS, fasciaMat);
+        fS.name = 'roof-fascia-s';
+        fS.position.set(0, wallHeight + edgeHeight / 2, rLength / 2 - edgeThick / 2);
+        scene.add(fS);
+
+        const fE = new THREE.Mesh(edgeGeoEW, fasciaMat);
+        fE.name = 'roof-fascia-e';
+        fE.position.set(rWidth / 2 - edgeThick / 2, wallHeight + edgeHeight / 2, 0);
+        scene.add(fE);
+
+        const fW = new THREE.Mesh(edgeGeoEW, fasciaMat);
+        fW.name = 'roof-fascia-w';
+        fW.position.set(-rWidth / 2 + edgeThick / 2, wallHeight + edgeHeight / 2, 0);
+        scene.add(fW);
+
+      } else if (roofType === 'gabled') {
+        const peakHeight = roofPitch * (rLength / 2);
+        const angle = Math.atan(peakHeight / (rLength / 2));
+        const slopeLen = Math.sqrt((rLength / 2) * (rLength / 2) + peakHeight * peakHeight);
+
+        // Left Slope
+        const lSlopeGeo = new THREE.BoxGeometry(rWidth, 0.1, slopeLen);
+        const lSlopeMesh = new THREE.Mesh(lSlopeGeo, roofMat);
+        lSlopeMesh.name = 'roof-slope-left';
+        lSlopeMesh.position.set(0, wallHeight + peakHeight / 2, -rLength / 4);
+        lSlopeMesh.rotation.x = angle;
+        lSlopeMesh.castShadow = true;
+        lSlopeMesh.receiveShadow = true;
+        scene.add(lSlopeMesh);
+
+        // Right Slope
+        const rSlopeGeo = new THREE.BoxGeometry(rWidth, 0.1, slopeLen);
+        const rSlopeMesh = new THREE.Mesh(rSlopeGeo, roofMat);
+        rSlopeMesh.name = 'roof-slope-right';
+        rSlopeMesh.position.set(0, wallHeight + peakHeight / 2, rLength / 4);
+        rSlopeMesh.rotation.x = -angle;
+        rSlopeMesh.castShadow = true;
+        rSlopeMesh.receiveShadow = true;
+        scene.add(rSlopeMesh);
+
+        // Triangular Gable Walls
+        const triShape = new THREE.Shape();
+        triShape.moveTo(-project.dimensions.length / 2, 0);
+        triShape.lineTo(project.dimensions.length / 2, 0);
+        triShape.lineTo(0, peakHeight);
+        triShape.closePath();
+
+        const triGeo = new THREE.ShapeGeometry(triShape);
+        const triMat = new THREE.MeshStandardMaterial({
+          color: project.sidingColor || '#f1f5f9',
+          side: THREE.DoubleSide,
+          roughness: 0.8
+        });
+
+        const gableW = new THREE.Mesh(triGeo, triMat);
+        gableW.name = 'roof-gable-w';
+        gableW.position.set(-project.dimensions.width / 2 + 0.01, wallHeight, 0);
+        gableW.rotation.y = Math.PI / 2;
+        gableW.castShadow = true;
+        scene.add(gableW);
+
+        const gableE = new THREE.Mesh(triGeo, triMat);
+        gableE.name = 'roof-gable-e';
+        gableE.position.set(project.dimensions.width / 2 - 0.01, wallHeight, 0);
+        gableE.rotation.y = Math.PI / 2;
+        gableE.castShadow = true;
+        scene.add(gableE);
+
+      } else if (roofType === 'hipped') {
+        const peakHeight = roofPitch * Math.max(rWidth, rLength) / 2;
+        
+        const coneGeo = new THREE.ConeGeometry(Math.sqrt(0.5), 1, 4);
+        coneGeo.rotateY(Math.PI / 4);
+        coneGeo.translate(0, 0.5, 0);
+
+        const coneMesh = new THREE.Mesh(coneGeo, roofMat);
+        coneMesh.name = 'roof-hipped';
+        coneMesh.position.set(0, wallHeight, 0);
+        coneMesh.scale.set(rWidth, peakHeight, rLength);
+        coneMesh.castShadow = true;
+        coneMesh.receiveShadow = true;
+        scene.add(coneMesh);
+      }
+    }
 
     // 4. Render Furniture
     project.furniture.forEach((item) => {
@@ -467,7 +829,6 @@ export default function ThreeCanvas({
 
       // Highlight selected item with helper wireframe box
       if (item.id === selectedFurnitureId) {
-        // Create an elegant glowing wireframe box
         const bbox = new THREE.BoxHelper(furnitureMesh, new THREE.Color('#3b82f6'));
         (bbox as any).material.depthTest = false;
         (bbox as any).material.transparent = true;

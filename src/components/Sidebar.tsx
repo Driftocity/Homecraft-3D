@@ -79,6 +79,15 @@ export default function Sidebar({
       floorMaterial: 'hardwood',
       floorColor: '#eab308',
       dimensions: { width: w, length: l },
+      foundationType: 'slab',
+      foundationHeight: 0.2,
+      foundationColor: '#64748b',
+      sidingType: 'vinyl',
+      sidingColor: '#f1f5f9',
+      roofType: 'gabled',
+      roofColor: '#334155',
+      roofPitch: 0.35,
+      roofOverhang: 0.3,
       walls: baseWalls,
       furniture: [
         {
@@ -152,6 +161,15 @@ export default function Sidebar({
       floorMaterial: 'hardwood',
       floorColor: '#d97706',
       dimensions: { width, length },
+      foundationType: 'slab',
+      foundationHeight: 0.2,
+      foundationColor: '#64748b',
+      sidingType: 'vinyl',
+      sidingColor: '#f1f5f9',
+      roofType: 'flat',
+      roofColor: '#334155',
+      roofPitch: 0.2,
+      roofOverhang: 0.2,
       walls: baseWalls,
       furniture: []
     };
