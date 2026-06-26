@@ -28,6 +28,7 @@ interface SidebarProps {
   currentProject: HomeProject;
   activeSubTab: 'catalog' | 'templates' | 'ai';
   setActiveSubTab: (tab: 'catalog' | 'templates' | 'ai') => void;
+  onCloseMobile?: () => void;
   children?: React.ReactNode;
 }
 
@@ -47,6 +48,7 @@ export default function Sidebar({
   currentProject,
   activeSubTab,
   setActiveSubTab,
+  onCloseMobile,
   children
 }: SidebarProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('living');
@@ -161,14 +163,25 @@ export default function Sidebar({
     <div className="w-80 shrink-0 bg-slate-950 border-r border-slate-800 flex flex-col h-full" id="builder-sidebar">
       {/* App Branding & Primary Tabs */}
       <div className="p-4 border-b border-slate-800 flex flex-col gap-3 shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-600/30">
-            <Layers className="w-5 h-5" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-600/30">
+              <Layers className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-sm font-bold text-slate-50 uppercase tracking-wider">3D Home Architect</h1>
+              <p className="text-[10px] text-slate-400 font-medium">Bento-Style Design Studio</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-sm font-bold text-slate-50 uppercase tracking-wider">3D Home Architect</h1>
-            <p className="text-[10px] text-slate-400 font-medium">Bento-Style Design Studio</p>
-          </div>
+          {onCloseMobile && (
+            <button
+              onClick={onCloseMobile}
+              type="button"
+              className="md:hidden p-2 text-slate-400 hover:text-white hover:bg-slate-900 rounded-xl cursor-pointer transition select-none"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         {/* Sidebar Tabs */}

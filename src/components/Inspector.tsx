@@ -26,6 +26,7 @@ interface InspectorProps {
   onDeleteFurniture: (id: string) => void;
   onDuplicateFurniture: (item: Furniture) => void;
   onUpdateFloorSettings: (settings: { floorMaterial: FloorMaterial; floorColor: string; name: string }) => void;
+  onCloseMobile?: () => void;
 }
 
 const COLOR_PRESETS = [
@@ -53,7 +54,8 @@ export default function Inspector({
   onUpdateFurniture,
   onDeleteFurniture,
   onDuplicateFurniture,
-  onUpdateFloorSettings
+  onUpdateFloorSettings,
+  onCloseMobile
 }: InspectorProps) {
 
   // Handle individual updates on selected furniture
@@ -87,9 +89,20 @@ export default function Inspector({
   return (
     <div className="w-80 shrink-0 bg-slate-950 border-l border-slate-800 flex flex-col h-full" id="builder-inspector">
       {/* Panel Header */}
-      <div className="p-4 border-b border-slate-800 flex items-center gap-2 shrink-0">
-        <Sliders className="w-5 h-5 text-indigo-400" />
-        <h2 className="text-sm font-bold text-slate-50 uppercase tracking-wider">Blueprint Inspector</h2>
+      <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
+          <Sliders className="w-5 h-5 text-indigo-400" />
+          <h2 className="text-sm font-bold text-slate-50 uppercase tracking-wider">Blueprint Inspector</h2>
+        </div>
+        {onCloseMobile && (
+          <button
+            onClick={onCloseMobile}
+            type="button"
+            className="md:hidden p-2 text-slate-400 hover:text-white hover:bg-slate-900 rounded-xl cursor-pointer transition select-none"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* Dynamic Inspector Content */}

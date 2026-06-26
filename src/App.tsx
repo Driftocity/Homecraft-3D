@@ -23,7 +23,10 @@ import {
   Check,
   Compass,
   FileText,
-  RotateCw
+  RotateCw,
+  Copy,
+  Plus,
+  Layers
 } from 'lucide-react';
 
 // Default starter project (Warm furnished living room)
@@ -124,6 +127,8 @@ export default function App() {
   const [activePlacingCatalogId, setActivePlacingCatalogId] = useState<string | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<'catalog' | 'templates' | 'ai'>('catalog');
   const [showHelp, setShowHelp] = useState<boolean>(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
 
   // Load preset templates
   const handleLoadTemplate = (newProject: HomeProject) => {
@@ -135,6 +140,9 @@ export default function App() {
   // Select furniture helper
   const handleSelectFurniture = (id: string | null) => {
     setSelectedFurnitureId(id);
+    if (id) {
+      setIsInspectorOpen(true); // Auto expand inspector for selected item on mobile
+    }
   };
 
   // Update position of a piece of furniture
@@ -303,74 +311,77 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen bg-slate-900 text-slate-100 font-sans antialiased overflow-hidden" id="applet-root">
       {/* Top Banner / Navigation Dashboard */}
-      <header className="h-16 shrink-0 bg-slate-950 border-b border-slate-800 flex items-center justify-between px-6 z-10" id="top-dashboard">
+      <header className="h-16 shrink-0 bg-slate-950 border-b border-slate-800 flex items-center justify-between px-4 sm:px-6 z-10" id="top-dashboard">
         {/* Branding Title */}
-        <div className="flex items-center gap-2.5">
-          <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <h1 className="text-sm font-bold tracking-wider text-slate-100 font-mono uppercase">
+        <div className="flex items-center gap-2">
+          <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <h1 className="text-xs sm:text-sm font-bold tracking-wider text-slate-100 font-mono uppercase truncate max-w-[120px] sm:max-w-none">
             {project.name}
           </h1>
-          <span className="hidden md:inline text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded-md font-mono">
+          <span className="hidden md:inline text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded-md font-mono shrink-0">
             {project.dimensions.width}m × {project.dimensions.length}m Layout
           </span>
         </div>
 
         {/* View mode toggle controls (Bento rounded switches) */}
-        <div className="flex items-center bg-slate-900 border border-slate-800 p-1 rounded-xl">
+        <div className="flex items-center bg-slate-900 border border-slate-800 p-1 rounded-xl mx-1 sm:mx-0 shrink-0">
           <button
             onClick={() => { setViewMode('2d'); handleSelectFurniture(null); }}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer select-none ${
+            className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center gap-1 sm:gap-1.5 cursor-pointer select-none ${
               viewMode === '2d'
                 ? 'bg-slate-800 border border-slate-700/50 text-indigo-400 font-extrabold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 border border-transparent'
             }`}
           >
-            <Compass className="w-3.5 h-3.5" />
-            <span>2D Blueprint</span>
+            <Compass className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline">2D Blueprint</span>
+            <span className="sm:hidden">2D</span>
           </button>
           <button
             onClick={() => { setViewMode('3d'); }}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer select-none ${
+            className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center gap-1 sm:gap-1.5 cursor-pointer select-none ${
               viewMode === '3d'
                 ? 'bg-slate-800 border border-slate-700/50 text-indigo-400 font-extrabold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 border border-transparent'
             }`}
           >
-            <Eye className="w-3.5 h-3.5" />
-            <span>3D Studio</span>
+            <Eye className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline">3D Studio</span>
+            <span className="sm:hidden">3D</span>
           </button>
           <button
             onClick={() => { setViewMode('walkthrough'); handleSelectFurniture(null); }}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer select-none ${
+            className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center gap-1 sm:gap-1.5 cursor-pointer select-none ${
               viewMode === 'walkthrough'
                 ? 'bg-slate-800 border border-slate-700/50 text-indigo-400 font-extrabold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 border border-transparent'
             }`}
           >
-            <RotateCw className="w-3.5 h-3.5" />
-            <span>First-Person Walk</span>
+            <RotateCw className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline">First Walk</span>
+            <span className="sm:hidden">Walk</span>
           </button>
         </div>
 
         {/* Action icons (Grid Snapping, Import, Export, Clear) */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           {/* Grid snapping toggler */}
           <button
             onClick={() => setGridSnapping(!gridSnapping)}
             title="Toggle Grid Alignment Snapping (0.25m Steps)"
-            className={`p-2 rounded-xl border transition cursor-pointer ${
+            className={`p-1.5 sm:p-2 rounded-xl border transition cursor-pointer ${
               gridSnapping
                 ? 'bg-indigo-600/10 border-indigo-500/60 text-indigo-400'
                 : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Grid className="w-4 h-4" />
+            <Grid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
 
-          {/* Import JSON input */}
+          {/* Import JSON input - Hidden on small mobile screens to save space */}
           <label
             title="Import Saved Layout File"
-            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-slate-100 transition cursor-pointer flex items-center justify-center"
+            className="hidden sm:flex p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-slate-100 transition cursor-pointer items-center justify-center"
           >
             <FolderOpen className="w-4 h-4" />
             <input
@@ -381,53 +392,82 @@ export default function App() {
             />
           </label>
 
-          {/* Export JSON Button */}
+          {/* Export JSON Button - Hidden on small mobile screens */}
           <button
             onClick={handleExportJSON}
             title="Export Layout as Blueprint File"
-            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-slate-100 transition cursor-pointer"
+            className="hidden sm:inline-block p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-slate-100 transition cursor-pointer"
           >
             <Download className="w-4 h-4" />
           </button>
 
-          <div className="h-6 w-px bg-slate-800 mx-1" />
+          <div className="hidden sm:block h-6 w-px bg-slate-800 mx-1" />
 
           {/* Clear Button */}
           <button
             onClick={handleClearWorkspace}
             title="Reset scene empty canvas"
-            className="p-2 rounded-xl bg-rose-950/20 hover:bg-rose-950/40 border border-rose-950 hover:border-rose-700 text-rose-300 hover:text-rose-200 transition cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl bg-rose-950/20 hover:bg-rose-950/40 border border-rose-950 hover:border-rose-700 text-rose-300 hover:text-rose-200 transition cursor-pointer"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
 
           {/* Help Button */}
           <button
             onClick={() => setShowHelp(!showHelp)}
-            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 transition cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 transition cursor-pointer"
           >
-            <HelpCircle className="w-4 h-4" />
+            <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
         </div>
       </header>
 
       {/* Main Workspace Frame */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Drawer Side Panel */}
-        <Sidebar
-          onPlaceCatalogItem={handlePlaceCatalogItemSelect}
-          activePlacingCatalogId={activePlacingCatalogId}
-          onLoadTemplate={handleLoadTemplate}
-          currentProject={project}
-          activeSubTab={activeSubTab}
-          setActiveSubTab={setActiveSubTab}
-        >
-          {/* AI Layout Planner inside Side Panel Drawer */}
-          <AIPlanner
-            onLoadGeneratedProject={handleLoadTemplate}
-            currentDimensions={project.dimensions}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Mobile Backdrop Overlay */}
+        {(isSidebarOpen || isInspectorOpen) && (
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 md:hidden animate-fadeIn"
+            onClick={() => {
+              setIsSidebarOpen(false);
+              setIsInspectorOpen(false);
+            }}
           />
-        </Sidebar>
+        )}
+
+        {/* Left Drawer Side Panel (Collapsible on Mobile, Persistent on Desktop) */}
+        <div
+          className={`fixed md:relative inset-y-0 left-0 z-30 transform transition-transform duration-300 ease-out md:translate-x-0 ${
+            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <Sidebar
+            onPlaceCatalogItem={(catalogId) => {
+              handlePlaceCatalogItemSelect(catalogId);
+              if (catalogId) {
+                setIsSidebarOpen(false); // Auto-close drawer on selection so they can place it easily
+              }
+            }}
+            activePlacingCatalogId={activePlacingCatalogId}
+            onLoadTemplate={(tpl) => {
+              handleLoadTemplate(tpl);
+              setIsSidebarOpen(false);
+            }}
+            currentProject={project}
+            activeSubTab={activeSubTab}
+            setActiveSubTab={setActiveSubTab}
+            onCloseMobile={() => setIsSidebarOpen(false)}
+          >
+            {/* AI Layout Planner inside Side Panel Drawer */}
+            <AIPlanner
+              onLoadGeneratedProject={(tpl) => {
+                handleLoadTemplate(tpl);
+                setIsSidebarOpen(false);
+              }}
+              currentDimensions={project.dimensions}
+            />
+          </Sidebar>
+        </div>
 
         {/* Core Canvas Viewport area */}
         <main className="flex-1 h-full relative overflow-hidden bg-slate-100" id="canvas-workspace">
@@ -444,9 +484,161 @@ export default function App() {
             onPlaceItem={handlePlaceItemOnGrid}
           />
 
+          {/* Floating Mobile Panel Toggle Pills */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-3 md:hidden pointer-events-auto">
+            <button
+              onClick={() => {
+                setIsSidebarOpen(!isSidebarOpen);
+                setIsInspectorOpen(false);
+              }}
+              className={`px-4 py-2.5 rounded-full border font-bold text-xs flex items-center gap-2 shadow-xl transition-all ${
+                isSidebarOpen
+                  ? 'bg-indigo-600 border-indigo-500 text-white'
+                  : 'bg-slate-950/90 backdrop-blur-sm border-slate-800 text-slate-200'
+              }`}
+            >
+              <Plus className="w-4 h-4 text-indigo-400" />
+              <span>Catalog / AI</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setIsInspectorOpen(!isInspectorOpen);
+                setIsSidebarOpen(false);
+              }}
+              className={`px-4 py-2.5 rounded-full border font-bold text-xs flex items-center gap-2 shadow-xl transition-all ${
+                isInspectorOpen
+                  ? 'bg-indigo-600 border-indigo-500 text-white'
+                  : 'bg-slate-950/90 backdrop-blur-sm border-slate-800 text-slate-200'
+              }`}
+            >
+              <Settings className={`w-4 h-4 ${activeSelectedFurniture ? 'text-emerald-400 animate-pulse' : 'text-slate-400'}`} />
+              <span>{activeSelectedFurniture ? 'Inspect Item' : 'Room Settings'}</span>
+            </button>
+          </div>
+
+          {/* Mobile Walkthrough Touch Controller */}
+          {viewMode === 'walkthrough' && (
+            <div className="absolute bottom-20 left-4 z-20 flex flex-col gap-1 md:hidden pointer-events-auto bg-slate-950/90 backdrop-blur-sm p-3 rounded-2xl border border-slate-800 max-w-[150px] shadow-2xl">
+              <span className="text-[9px] font-mono uppercase tracking-wider text-slate-400 text-center font-bold">Touch D-Pad</span>
+              <div className="grid grid-cols-3 gap-1">
+                <div />
+                <button
+                  onTouchStart={() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp' })); }}
+                  onTouchEnd={() => { window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowUp' })); }}
+                  onMouseDown={() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp' })); }}
+                  onMouseUp={() => { window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowUp' })); }}
+                  className="w-10 h-10 bg-slate-900 border border-slate-800 active:bg-indigo-600 rounded-xl flex items-center justify-center font-bold text-slate-200 select-none cursor-pointer"
+                >
+                  ▲
+                </button>
+                <div />
+
+                <button
+                  onTouchStart={() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' })); }}
+                  onTouchEnd={() => { window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowLeft' })); }}
+                  onMouseDown={() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' })); }}
+                  onMouseUp={() => { window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowLeft' })); }}
+                  className="w-10 h-10 bg-slate-900 border border-slate-800 active:bg-indigo-600 rounded-xl flex items-center justify-center font-bold text-slate-200 select-none cursor-pointer"
+                >
+                  ◀
+                </button>
+                <button
+                  onTouchStart={() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' })); }}
+                  onTouchEnd={() => { window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowDown' })); }}
+                  onMouseDown={() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' })); }}
+                  onMouseUp={() => { window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowDown' })); }}
+                  className="w-10 h-10 bg-slate-900 border border-slate-800 active:bg-indigo-600 rounded-xl flex items-center justify-center font-bold text-slate-200 select-none cursor-pointer"
+                >
+                  ▼
+                </button>
+                <button
+                  onTouchStart={() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' })); }}
+                  onTouchEnd={() => { window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight' })); }}
+                  onMouseDown={() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' })); }}
+                  onMouseUp={() => { window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight' })); }}
+                  className="w-10 h-10 bg-slate-900 border border-slate-800 active:bg-indigo-600 rounded-xl flex items-center justify-center font-bold text-slate-200 select-none cursor-pointer"
+                >
+                  ▶
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Floating Mobile Quick Action Toolbar for Selected Furniture */}
+          {activeSelectedFurniture && (
+            <div className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-slate-950/95 backdrop-blur-md border border-slate-800 px-3 py-2 rounded-2xl shadow-2xl z-20 flex items-center gap-2.5 md:hidden pointer-events-auto">
+              <div className="flex flex-col border-r border-slate-800 pr-2 max-w-[80px]">
+                <span className="text-[8px] text-indigo-400 font-mono uppercase truncate font-semibold">Active</span>
+                <span className="text-[10px] font-bold text-slate-200 truncate">{activeSelectedFurniture.name}</span>
+              </div>
+              
+              {/* Quick Rotation */}
+              <button
+                onClick={() => handleUpdateFurnitureRotation(activeSelectedFurniture.id, activeSelectedFurniture.rotation + Math.PI / 4)}
+                title="Rotate 45°"
+                className="p-1.5 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 text-slate-300 active:text-indigo-400 cursor-pointer"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Elevation Up */}
+              <button
+                onClick={() => {
+                  handleUpdateFurniture({
+                    ...activeSelectedFurniture,
+                    position: {
+                      ...activeSelectedFurniture.position,
+                      y: Math.min(3, activeSelectedFurniture.position.y + 0.1)
+                    }
+                  });
+                }}
+                title="Elevate Up (+0.1m)"
+                className="p-1.5 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 text-slate-300 font-mono text-[10px] font-bold flex items-center justify-center w-7 h-7 cursor-pointer"
+              >
+                ▲
+              </button>
+
+              {/* Elevation Down */}
+              <button
+                onClick={() => {
+                  handleUpdateFurniture({
+                    ...activeSelectedFurniture,
+                    position: {
+                      ...activeSelectedFurniture.position,
+                      y: Math.max(0, activeSelectedFurniture.position.y - 0.1)
+                    }
+                  });
+                }}
+                title="Elevate Down (-0.1m)"
+                className="p-1.5 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 text-slate-300 font-mono text-[10px] font-bold flex items-center justify-center w-7 h-7 cursor-pointer"
+              >
+                ▼
+              </button>
+
+              {/* Duplicate */}
+              <button
+                onClick={() => handleDuplicateFurniture(activeSelectedFurniture)}
+                title="Duplicate Furniture"
+                className="p-1.5 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 text-indigo-400 cursor-pointer"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Trash */}
+              <button
+                onClick={() => handleDeleteFurniture(activeSelectedFurniture.id)}
+                title="Delete Furniture"
+                className="p-1.5 bg-rose-950/40 hover:bg-rose-950/60 rounded-xl border border-rose-900/40 text-rose-300 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           {/* Floating Instruction Manual Banner */}
           {showHelp && (
-            <div className="absolute top-20 left-6 bg-slate-950/95 backdrop-blur-md border border-slate-800 p-5 rounded-2xl shadow-2xl z-20 max-w-md animate-fadeIn" id="instructions-manual">
+            <div className="absolute top-20 left-4 right-4 sm:left-6 sm:right-auto bg-slate-950/95 backdrop-blur-md border border-slate-800 p-5 rounded-2xl shadow-2xl z-20 max-w-md animate-fadeIn" id="instructions-manual">
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-indigo-400" />
@@ -489,29 +681,40 @@ export default function App() {
           )}
         </main>
 
-        {/* Right Properties Inspector Drawer */}
-        <Inspector
-          selectedFurniture={activeSelectedFurniture}
-          project={project}
-          onUpdateFurniture={handleUpdateFurniture}
-          onDeleteFurniture={handleDeleteFurniture}
-          onDuplicateFurniture={handleDuplicateFurniture}
-          onUpdateFloorSettings={handleUpdateFloorSettings}
-        />
+        {/* Right Properties Inspector Drawer (Collapsible on Mobile, Persistent on Desktop) */}
+        <div
+          className={`fixed md:relative inset-y-0 right-0 z-30 transform transition-transform duration-300 ease-out md:translate-x-0 ${
+            isInspectorOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        >
+          <Inspector
+            selectedFurniture={activeSelectedFurniture}
+            project={project}
+            onUpdateFurniture={handleUpdateFurniture}
+            onDeleteFurniture={(id) => {
+              handleDeleteFurniture(id);
+              setIsInspectorOpen(false);
+            }}
+            onDuplicateFurniture={handleDuplicateFurniture}
+            onUpdateFloorSettings={handleUpdateFloorSettings}
+            onCloseMobile={() => setIsInspectorOpen(false)}
+          />
+        </div>
       </div>
 
       {/* Footer Status Indicators bar */}
-      <footer className="h-8 shrink-0 bg-slate-950 border-t border-slate-800 flex items-center justify-between px-6 text-[10px] font-mono text-slate-500 z-10" id="footer-rail">
+      <footer className="h-8 shrink-0 bg-slate-950 border-t border-slate-800 flex items-center justify-between px-4 sm:px-6 text-[10px] font-mono text-slate-500 z-10" id="footer-rail">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            <span>WebGL Context: Ready</span>
+            <span className="hidden sm:inline">WebGL Context: Ready</span>
+            <span className="sm:hidden">WebGL</span>
           </span>
-          <span>Snapping: {gridSnapping ? '0.25m' : 'Disabled'}</span>
+          <span>Snap: {gridSnapping ? '0.25m' : 'Off'}</span>
         </div>
         <div className="flex items-center gap-4">
-          <span>Active View: {viewMode.toUpperCase()}</span>
-          <span>Press R to Rotate Selected Item</span>
+          <span className="hidden sm:inline">Active View: {viewMode.toUpperCase()}</span>
+          <span>{viewMode === 'walkthrough' ? 'Touch D-Pad' : 'Press R to Rotate'}</span>
         </div>
       </footer>
     </div>
