@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import ThreeCanvas from './components/ThreeCanvas';
 import Sidebar from './components/Sidebar';
 import Inspector from './components/Inspector';
-import AIPlanner from './components/AIPlanner';
+import ConstructionGuide from './components/ConstructionGuide';
 import { HomeProject, Furniture, FloorMaterial } from './types';
 import { getCatalogItemById } from './data/furnitureCatalog';
 import {
@@ -134,7 +134,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<'2d' | '3d' | 'walkthrough'>('3d');
   const [gridSnapping, setGridSnapping] = useState<boolean>(true);
   const [activePlacingCatalogId, setActivePlacingCatalogId] = useState<string | null>(null);
-  const [activeSubTab, setActiveSubTab] = useState<'catalog' | 'templates' | 'ai'>('catalog');
+  const [activeSubTab, setActiveSubTab] = useState<'catalog' | 'templates' | 'construction'>('construction');
   const [showHelp, setShowHelp] = useState<boolean>(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
@@ -462,13 +462,15 @@ export default function App() {
             setActiveSubTab={setActiveSubTab}
             onCloseMobile={() => setIsSidebarOpen(false)}
           >
-            {/* AI Layout Planner inside Side Panel Drawer */}
-            <AIPlanner
-              onLoadGeneratedProject={(tpl) => {
+            {/* Construction & Footprint Guide inside Side Panel Drawer */}
+            <ConstructionGuide
+              project={project}
+              onUpdateProjectSettings={handleUpdateProjectSettings}
+              onLoadTemplate={(tpl) => {
                 handleLoadTemplate(tpl);
                 setIsSidebarOpen(false);
               }}
-              currentDimensions={project.dimensions}
+              onNavigateToCatalog={() => setActiveSubTab('catalog')}
             />
           </Sidebar>
         </div>
@@ -502,7 +504,7 @@ export default function App() {
               }`}
             >
               <Plus className="w-4 h-4 text-indigo-400" />
-              <span>Catalog / AI</span>
+              <span>Catalog / Build</span>
             </button>
 
             <button
@@ -674,7 +676,7 @@ export default function App() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-indigo-400 font-bold shrink-0">5.</span>
-                  <span>Try the <span className="font-semibold text-indigo-300">AI Plan</span> tab. Type what you want (e.g., "A modern gaming bedroom") and let Gemini place walls and custom furniture coordinates instantly!</span>
+                  <span>Try the <span className="font-semibold text-indigo-300">Build</span> tab. Change house dimensions to see real-time square footage, customize materials, foundations, wall sidings, and roof structures instantly!</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-indigo-400 font-bold shrink-0">6.</span>

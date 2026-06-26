@@ -26,8 +26,8 @@ interface SidebarProps {
   activePlacingCatalogId: string | null;
   onLoadTemplate: (project: HomeProject) => void;
   currentProject: HomeProject;
-  activeSubTab: 'catalog' | 'templates' | 'ai';
-  setActiveSubTab: (tab: 'catalog' | 'templates' | 'ai') => void;
+  activeSubTab: 'catalog' | 'templates' | 'construction';
+  setActiveSubTab: (tab: 'catalog' | 'templates' | 'construction') => void;
   onCloseMobile?: () => void;
   children?: React.ReactNode;
 }
@@ -215,15 +215,15 @@ export default function Sidebar({
             Furniture
           </button>
           <button
-            onClick={() => { setActiveSubTab('ai'); onPlaceCatalogItem(null); }}
+            onClick={() => { setActiveSubTab('construction'); onPlaceCatalogItem(null); }}
             className={`py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
-              activeSubTab === 'ai'
+              activeSubTab === 'construction'
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Sparkles className="w-3 h-3 text-amber-400 fill-amber-400" />
-            <span>AI Plan</span>
+            <Hammer className="w-3 h-3 text-amber-400" />
+            <span>Build</span>
           </button>
           <button
             onClick={() => { setActiveSubTab('templates'); onPlaceCatalogItem(null); }}
@@ -312,7 +312,7 @@ export default function Sidebar({
           </div>
         )}
 
-        {activeSubTab === 'ai' && children}
+        {activeSubTab === 'construction' && children}
 
         {activeSubTab === 'templates' && (
           <div className="flex flex-col gap-4">
