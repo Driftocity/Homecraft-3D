@@ -22,6 +22,7 @@ interface ThreeCanvasProps {
   gridSnapping: boolean;
   activePlacingItemCatalogId: string | null;
   onPlaceItem: (catalogId: string, position: { x: number; y: number; z: number }) => void;
+  onDragEnd?: () => void;
 }
 
 export default function ThreeCanvas({
@@ -35,6 +36,7 @@ export default function ThreeCanvas({
   gridSnapping,
   activePlacingItemCatalogId,
   onPlaceItem,
+  onDragEnd,
 }: ThreeCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -56,6 +58,9 @@ export default function ThreeCanvas({
 
   // Track keyboard state for walkthrough mode
   const keysPressedRef = useRef<{ [key: string]: boolean }>({});
+
+  const labelsContainerRef = useRef<HTMLDivElement>(null);
+  const roomLabelsContainerRef = useRef<HTMLDivElement>(null);
 
   // Trigger re-texture when floor settings change
   const floorTextureCacheRef = useRef<{ [key: string]: THREE.CanvasTexture }>({});
@@ -334,10 +339,12 @@ export default function ThreeCanvas({
     // 5. Add Lighting
     // Ambient
     const ambientLight = new THREE.AmbientLight('#ffffff', 0.6);
+    ambientLight.name = 'ambient-light';
     scene.add(ambientLight);
 
     // Sun / Directional
     const sunLight = new THREE.DirectionalLight('#fffbeb', 1.0); // Warm sun
+    sunLight.name = 'sun-light';
     sunLight.position.set(15, 25, 10);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
@@ -354,6 +361,7 @@ export default function ThreeCanvas({
 
     // Subtle blue fill light from the opposite direction
     const skyLight = new THREE.DirectionalLight('#eff6ff', 0.25);
+    skyLight.name = 'sky-light';
     skyLight.position.set(-15, 10, -10);
     scene.add(skyLight);
 
@@ -409,6 +417,104 @@ export default function ThreeCanvas({
       controls.update();
       renderer.render(scene, camera);
 
+      // 1. Update Wall Dimension Labels overlay
+      if (camera && mountRef.current && labelsContainerRef.current && project.walls) {
+        const width = mountRef.current.clientWidth;
+        const height = mountRef.current.clientHeight;
+        const halfWidth = width / 2;
+        const halfHeight = height / 2;
+        const container = labelsContainerRef.current;
+
+        // Sync children count
+        while (container.children.length < project.walls.length) {
+          const labelDiv = document.createElement('div');
+          labelDiv.className = 'absolute bg-slate-950/90 text-amber-400 font-mono text-[9px] font-extrabold px-1.5 py-0.5 rounded border border-amber-500/30 shadow-md transform -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 select-none pointer-events-none transition-opacity duration-100';
+          container.appendChild(labelDiv);
+        }
+        while (container.children.length > project.walls.length) {
+          container.removeChild(container.lastChild!);
+        }
+
+        project.walls.forEach((wall, idx) => {
+          const el = container.children[idx] as HTMLDivElement;
+          if (!el) return;
+
+          const p1 = new THREE.Vector3(wall.p1.x, 0, wall.p1.y);
+          const p2 = new THREE.Vector3(wall.p2.x, 0, wall.p2.y);
+          const distance = p1.distanceTo(p2);
+          
+          // Wall Midpoint
+          const mid = new THREE.Vector3(
+            (wall.p1.x + wall.p2.x) / 2,
+            wall.height / 2,
+            (wall.p1.y + wall.p2.y) / 2
+          );
+
+          // Project to 2D screen space
+          mid.project(camera);
+
+          if (mid.z > 1) {
+            el.style.opacity = '0';
+          } else {
+            const x = (mid.x * halfWidth) + halfWidth;
+            const y = (-(mid.y * halfHeight)) + halfHeight;
+            
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            el.style.opacity = '1';
+            el.innerHTML = `<span>${distance.toFixed(2)}m</span>`;
+          }
+        });
+      }
+
+      // 2. Update Room Naming Labels overlay
+      if (camera && mountRef.current && roomLabelsContainerRef.current && project.roomLabels) {
+        const width = mountRef.current.clientWidth;
+        const height = mountRef.current.clientHeight;
+        const halfWidth = width / 2;
+        const halfHeight = height / 2;
+        const container = roomLabelsContainerRef.current;
+
+        const labels = project.roomLabels || [];
+
+        // Sync children count
+        while (container.children.length < labels.length) {
+          const labelDiv = document.createElement('div');
+          labelDiv.className = 'absolute font-sans font-bold select-none pointer-events-none transform -translate-x-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-lg border bg-slate-950/80 backdrop-blur-xs text-center flex flex-col items-center shadow-lg transition-all';
+          container.appendChild(labelDiv);
+        }
+        while (container.children.length > labels.length) {
+          container.removeChild(container.lastChild!);
+        }
+
+        labels.forEach((roomLabel, idx) => {
+          const el = container.children[idx] as HTMLDivElement;
+          if (!el) return;
+
+          // Room label is placed on the floor (y = 0.05 for slight float)
+          const pos3d = new THREE.Vector3(roomLabel.position.x, 0.05, roomLabel.position.y);
+          pos3d.project(camera);
+
+          if (pos3d.z > 1) {
+            el.style.opacity = '0';
+          } else {
+            const x = (pos3d.x * halfWidth) + halfWidth;
+            const y = (-(pos3d.y * halfHeight)) + halfHeight;
+
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            el.style.opacity = '1';
+            el.style.fontSize = `${roomLabel.fontSize || 12}px`;
+            el.style.borderColor = `${roomLabel.color || '#3b82f6'}44`;
+            el.style.color = roomLabel.color || '#3b82f6';
+            
+            el.innerHTML = `<span style="color: ${roomLabel.color || '#3b82f6'}">${roomLabel.name}</span>`;
+          }
+        });
+      } else if (roomLabelsContainerRef.current && (!project.roomLabels || project.roomLabels.length === 0)) {
+        roomLabelsContainerRef.current.innerHTML = '';
+      }
+
       // Simple status update for zoom metrics
       if (cameraRef.current) {
         const dist = cameraRef.current.position.distanceTo(controls.target);
@@ -448,6 +554,103 @@ export default function ThreeCanvas({
       }
     };
   }, [viewMode]);
+
+  // Dynamic Environment & Lighting Controls
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+
+    // Find our light sources
+    const ambient = scene.getObjectByName('ambient-light') as THREE.AmbientLight | undefined;
+    const sun = scene.getObjectByName('sun-light') as THREE.DirectionalLight | undefined;
+    const sky = scene.getObjectByName('sky-light') as THREE.DirectionalLight | undefined;
+    const renderer = rendererRef.current;
+
+    // Get values with defaults
+    const timeOfDay = project.timeOfDay ?? 12.0; // 0 to 24
+    const sunIntensity = project.sunIntensity ?? 1.0;
+    const ambientIntensity = project.ambientIntensity ?? 0.6;
+    const shadowsEnabled = project.shadowsEnabled !== false;
+
+    // Update Ambient Light
+    if (ambient) {
+      ambient.intensity = ambientIntensity;
+    }
+
+    // Update Shadows
+    if (renderer) {
+      if (renderer.shadowMap.enabled !== shadowsEnabled) {
+        renderer.shadowMap.enabled = shadowsEnabled;
+        // flag materials to update their shadow programs
+        scene.traverse((node) => {
+          if (node instanceof THREE.Mesh) {
+            node.castShadow = shadowsEnabled;
+            node.receiveShadow = shadowsEnabled;
+            if (node.material) {
+              const materials = Array.isArray(node.material) ? node.material : [node.material];
+              materials.forEach((m) => {
+                m.needsUpdate = true;
+              });
+            }
+          }
+        });
+      }
+    }
+
+    // Calculate dynamic sun position and color based on Time of Day (0 to 24)
+    if (sun) {
+      sun.castShadow = shadowsEnabled;
+
+      // angle in radians: 0 is midnight, 6 is sunrise, 12 is midday, 18 is sunset
+      const angle = ((timeOfDay - 6) / 24) * Math.PI * 2;
+      
+      // Calculate coordinates on a semi-sphere
+      const radius = 25;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius; // high at noon (angle = pi/2), below horizon at night
+      const z = 10; // offset for shadow coverage
+
+      sun.position.set(x, Math.max(-5, y), z);
+
+      // Sun styling & colors based on time
+      if (y < 0) {
+        // Night - dim moonlight
+        sun.intensity = 0.15 * sunIntensity;
+        sun.color.set('#93c5fd'); // Cool moonlight blue
+        scene.background = new THREE.Color('#020617'); // Deep dark slate background
+        scene.fog = new THREE.FogExp2('#020617', 0.02);
+      } else if (y < 4) {
+        // Sunset / Sunrise - golden/orange hour
+        const pct = y / 4; // 0 to 1
+        sun.intensity = (0.3 + pct * 0.7) * sunIntensity;
+        
+        // mix orange (#f97316) with warm sun (#fffbeb)
+        const col = new THREE.Color('#f97316').lerp(new THREE.Color('#fffbeb'), pct);
+        sun.color.copy(col);
+
+        // Mix twilight blue/purple background
+        const bg = new THREE.Color('#0f172a').lerp(new THREE.Color('#cbd5e1'), pct);
+        scene.background.copy(bg);
+        scene.fog = new THREE.FogExp2(bg, 0.02);
+      } else {
+        // Daytime - bright yellow/white sun
+        sun.intensity = sunIntensity;
+        sun.color.set('#fffbeb');
+        scene.background = new THREE.Color('#f1f5f9');
+        scene.fog = new THREE.FogExp2('#f1f5f9', 0.02);
+      }
+    }
+
+    if (sky) {
+      // dynamic sky fill light
+      const timeOfDayVal = project.timeOfDay ?? 12.0;
+      if (timeOfDayVal < 6 || timeOfDayVal > 18) {
+        sky.intensity = 0.05;
+      } else {
+        sky.intensity = 0.25;
+      }
+    }
+  }, [project.timeOfDay, project.sunIntensity, project.ambientIntensity, project.shadowsEnabled]);
 
   // Adjust Camera View based on View Mode
   useEffect(() => {
@@ -1040,7 +1243,12 @@ export default function ThreeCanvas({
   };
 
   const handlePointerUp = () => {
-    isDraggingRef.current = false;
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      if (onDragEnd) {
+        onDragEnd();
+      }
+    }
     if (controlsRef.current) {
       controlsRef.current.enabled = true; // Restore camera control orbit navigation
     }
@@ -1065,6 +1273,10 @@ export default function ThreeCanvas({
 
   return (
     <div className="relative w-full h-full select-none" id="builder-canvas-container">
+      {/* 2D overlays for Wall Dimensions and Room Labels */}
+      <div ref={labelsContainerRef} className="absolute inset-0 pointer-events-none overflow-hidden z-10" />
+      <div ref={roomLabelsContainerRef} className="absolute inset-0 pointer-events-none overflow-hidden z-10" />
+
       {/* Three WebGL Mounting Block */}
       <div
         ref={mountRef}

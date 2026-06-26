@@ -26,7 +26,11 @@ import {
   RotateCw,
   Copy,
   Plus,
-  Layers
+  Layers,
+  Undo2,
+  Redo2,
+  Save,
+  History
 } from 'lucide-react';
 
 // Default starter project (Warm furnished living room)
@@ -129,15 +133,86 @@ const INITIAL_PROJECT: HomeProject = {
 };
 
 export default function App() {
-  const [project, setProject] = useState<HomeProject>(INITIAL_PROJECT);
+  // Load initial project from localStorage if it exists, otherwise use default
+  const [project, setProject] = useState<HomeProject>(() => {
+    try {
+      const saved = localStorage.getItem('draft_home_project');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object' && parsed.id) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to restore saved project draft', e);
+    }
+    return INITIAL_PROJECT;
+  });
+
+  const [undoStack, setUndoStack] = useState<HomeProject[]>([]);
+  const [redoStack, setRedoStack] = useState<HomeProject[]>([]);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('auto_save_setting');
+    return saved !== 'false'; // defaults to true
+  });
+
   const [selectedFurnitureId, setSelectedFurnitureId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'2d' | '3d' | 'walkthrough'>('3d');
   const [gridSnapping, setGridSnapping] = useState<boolean>(true);
   const [activePlacingCatalogId, setActivePlacingCatalogId] = useState<string | null>(null);
-  const [activeSubTab, setActiveSubTab] = useState<'catalog' | 'templates' | 'construction'>('construction');
+  const [activeSubTab, setActiveSubTab] = useState<'catalog' | 'templates' | 'construction' | 'rooms' | 'pricing'>('construction');
   const [showHelp, setShowHelp] = useState<boolean>(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
+
+  // Update project with undo/redo capability
+  const setProjectWithHistory = (updateValue: HomeProject | ((prev: HomeProject) => HomeProject)) => {
+    setProject((prev) => {
+      const next = typeof updateValue === 'function' ? updateValue(prev) : updateValue;
+      // Push previous to undo stack
+      setUndoStack((u) => [...u, prev].slice(-50)); // limit history to 50 states
+      // Clear redo stack on a new modification
+      setRedoStack([]);
+      return next;
+    });
+  };
+
+  const handleUndo = () => {
+    if (undoStack.length === 0) return;
+    const previous = undoStack[undoStack.length - 1];
+    setUndoStack((u) => u.slice(0, -1));
+    setRedoStack((r) => [...r, project]);
+    setProject(previous);
+  };
+
+  const handleRedo = () => {
+    if (redoStack.length === 0) return;
+    const next = redoStack[redoStack.length - 1];
+    setRedoStack((r) => r.slice(0, -1));
+    setUndoStack((u) => [...u, project]);
+    setProject(next);
+  };
+
+  // Auto-Save Effect
+  React.useEffect(() => {
+    if (autoSaveEnabled) {
+      try {
+        localStorage.setItem('draft_home_project', JSON.stringify(project));
+      } catch (e) {
+        console.error('Failed to auto-save project', e);
+      }
+    }
+  }, [project, autoSaveEnabled]);
+
+  // Persist autoSaveEnabled state
+  React.useEffect(() => {
+    localStorage.setItem('auto_save_setting', String(autoSaveEnabled));
+  }, [autoSaveEnabled]);
+
+  const handleDragEnd = () => {
+    // Record history of the final dragged item position
+    setProjectWithHistory((prev) => prev);
+  };
 
   // Load preset templates
   const handleLoadTemplate = (newProject: HomeProject) => {
@@ -166,7 +241,7 @@ export default function App() {
 
   // Update rotation of a piece of furniture
   const handleUpdateFurnitureRotation = (id: string, rot: number) => {
-    setProject((prev) => ({
+    setProjectWithHistory((prev) => ({
       ...prev,
       furniture: prev.furniture.map((item) =>
         item.id === id ? { ...item, rotation: rot } : item
@@ -176,7 +251,7 @@ export default function App() {
 
   // Fine-grain furniture inspector edits
   const handleUpdateFurniture = (updatedItem: Furniture) => {
-    setProject((prev) => ({
+    setProjectWithHistory((prev) => ({
       ...prev,
       furniture: prev.furniture.map((item) =>
         item.id === updatedItem.id ? updatedItem : item
@@ -186,7 +261,7 @@ export default function App() {
 
   // Delete furniture
   const handleDeleteFurniture = (id: string) => {
-    setProject((prev) => ({
+    setProjectWithHistory((prev) => ({
       ...prev,
       furniture: prev.furniture.filter((item) => item.id !== id),
     }));
@@ -207,7 +282,7 @@ export default function App() {
         z: item.position.z
       }
     };
-    setProject((prev) => ({
+    setProjectWithHistory((prev) => ({
       ...prev,
       furniture: [...prev.furniture, copy]
     }));
@@ -237,7 +312,7 @@ export default function App() {
       category: catalogItem.category,
     };
 
-    setProject((prev) => ({
+    setProjectWithHistory((prev) => ({
       ...prev,
       furniture: [...prev.furniture, newFurniture],
     }));
@@ -249,7 +324,7 @@ export default function App() {
 
   // Update global project/structural/floor settings
   const handleUpdateProjectSettings = (updatedProject: HomeProject) => {
-    setProject(updatedProject);
+    setProjectWithHistory(updatedProject);
   };
 
   // Clear workspace
@@ -257,7 +332,7 @@ export default function App() {
     if (window.confirm('Are you sure you want to clear your entire room layout and furniture?')) {
       const halfW = project.dimensions.width / 2;
       const halfL = project.dimensions.length / 2;
-      setProject({
+      setProjectWithHistory({
         id: 'user-room-' + Date.now(),
         name: 'Empty Blueprint Plan',
         floorMaterial: 'concrete',
@@ -369,6 +444,52 @@ export default function App() {
 
         {/* Action icons (Grid Snapping, Import, Export, Clear) */}
         <div className="flex items-center gap-1 sm:gap-2">
+          {/* Undo Button */}
+          <button
+            onClick={handleUndo}
+            disabled={undoStack.length === 0}
+            title={`Undo change (${undoStack.length} states in history)`}
+            className={`p-1.5 sm:p-2 rounded-xl border transition cursor-pointer ${
+              undoStack.length === 0
+                ? 'opacity-35 cursor-not-allowed border-slate-800/40 text-slate-600 bg-slate-950/10'
+                : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-slate-100 hover:border-slate-700'
+            }`}
+          >
+            <Undo2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </button>
+
+          {/* Redo Button */}
+          <button
+            onClick={handleRedo}
+            disabled={redoStack.length === 0}
+            title={`Redo change (${redoStack.length} states in stack)`}
+            className={`p-1.5 sm:p-2 rounded-xl border transition cursor-pointer ${
+              redoStack.length === 0
+                ? 'opacity-35 cursor-not-allowed border-slate-800/40 text-slate-600 bg-slate-950/10'
+                : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-slate-100 hover:border-slate-700'
+            }`}
+          >
+            <Redo2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </button>
+
+          <div className="h-6 w-px bg-slate-800 mx-0.5" />
+
+          {/* Auto-Save Toggle Pill */}
+          <button
+            onClick={() => setAutoSaveEnabled(!autoSaveEnabled)}
+            title={autoSaveEnabled ? "Auto-Save is Active (persisting to browser storage)" : "Auto-Save is Inactive"}
+            className={`px-2 py-1 sm:py-1.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer text-[10px] font-bold font-mono uppercase tracking-wider ${
+              autoSaveEnabled
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-400'
+            }`}
+          >
+            <div className={`h-1.5 w-1.5 rounded-full ${autoSaveEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
+            <span>{autoSaveEnabled ? "Auto-Save" : "Manual"}</span>
+          </button>
+
+          <div className="h-6 w-px bg-slate-800 mx-0.5" />
+
           {/* Grid snapping toggler */}
           <button
             onClick={() => setGridSnapping(!gridSnapping)}
@@ -461,6 +582,7 @@ export default function App() {
             activeSubTab={activeSubTab}
             setActiveSubTab={setActiveSubTab}
             onCloseMobile={() => setIsSidebarOpen(false)}
+            onUpdateProjectSettings={handleUpdateProjectSettings}
           >
             {/* Construction & Footprint Guide inside Side Panel Drawer */}
             <ConstructionGuide
@@ -488,6 +610,7 @@ export default function App() {
             gridSnapping={gridSnapping}
             activePlacingItemCatalogId={activePlacingCatalogId}
             onPlaceItem={handlePlaceItemOnGrid}
+            onDragEnd={handleDragEnd}
           />
 
           {/* Floating Mobile Panel Toggle Pills */}

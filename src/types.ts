@@ -55,6 +55,14 @@ export type FoundationType = 'slab' | 'crawlspace' | 'basement';
 export type SidingType = 'vinyl' | 'brick' | 'stucco' | 'wood';
 export type RoofType = 'none' | 'gabled' | 'hipped' | 'flat';
 
+export interface RoomLabel {
+  id: string;
+  name: string;
+  position: Point2D;
+  color?: string;
+  fontSize?: number;
+}
+
 export interface HomeProject {
   id: string;
   name: string;
@@ -62,6 +70,7 @@ export interface HomeProject {
   floorColor: string;
   walls: Wall[];
   furniture: Furniture[];
+  roomLabels?: RoomLabel[];
   dimensions: {
     width: number; // in meters (e.g. 15)
     length: number; // in meters (e.g. 15)
@@ -75,6 +84,14 @@ export interface HomeProject {
   roofColor?: string;
   roofPitch?: number; // 0.1 to 1.0 (multiplier/factor)
   roofOverhang?: number; // overhang in meters (e.g. 0.3)
+  // Lighting and Environment Settings
+  timeOfDay?: number; // 0 to 24 (hours)
+  sunIntensity?: number; // 0 to 2.5
+  ambientIntensity?: number; // 0 to 2.0
+  shadowsEnabled?: boolean;
+  // Costing & Pricing Customization
+  selectedState?: string; // State code: e.g. 'CA', 'TX', 'NY', 'FL'
+  customPrices?: { [key: string]: number }; // base cost per unit/sqm custom overrides
 }
 
 export interface AILayoutResponse {

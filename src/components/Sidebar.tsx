@@ -6,6 +6,8 @@
 import React, { useState } from 'react';
 import { FURNITURE_CATALOG } from '../data/furnitureCatalog';
 import { CatalogItem, HomeProject, Wall } from '../types';
+import RoomLabeler from './RoomLabeler';
+import PricingMatrix from './PricingMatrix';
 import {
   Sofa,
   Bed,
@@ -18,7 +20,10 @@ import {
   Layers,
   Sparkles,
   Info,
-  Hammer
+  Hammer,
+  Tag,
+  DollarSign,
+  X
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,9 +31,10 @@ interface SidebarProps {
   activePlacingCatalogId: string | null;
   onLoadTemplate: (project: HomeProject) => void;
   currentProject: HomeProject;
-  activeSubTab: 'catalog' | 'templates' | 'construction';
-  setActiveSubTab: (tab: 'catalog' | 'templates' | 'construction') => void;
+  activeSubTab: 'catalog' | 'templates' | 'construction' | 'rooms' | 'pricing';
+  setActiveSubTab: (tab: 'catalog' | 'templates' | 'construction' | 'rooms' | 'pricing') => void;
   onCloseMobile?: () => void;
+  onUpdateProjectSettings: (project: HomeProject) => void;
   children?: React.ReactNode;
 }
 
@@ -49,6 +55,7 @@ export default function Sidebar({
   activeSubTab,
   setActiveSubTab,
   onCloseMobile,
+  onUpdateProjectSettings,
   children
 }: SidebarProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('living');
@@ -203,37 +210,66 @@ export default function Sidebar({
         </div>
 
         {/* Sidebar Tabs */}
-        <div className="grid grid-cols-3 bg-slate-900 p-1 rounded-xl border border-slate-800">
+        <div className="grid grid-cols-5 bg-slate-900 p-0.5 rounded-xl border border-slate-800">
           <button
             onClick={() => { setActiveSubTab('catalog'); onPlaceCatalogItem(null); }}
-            className={`py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer select-none ${
+            className={`py-2 rounded-lg font-bold transition flex flex-col items-center justify-center gap-0.5 cursor-pointer select-none ${
               activeSubTab === 'catalog'
-                ? 'bg-indigo-600 text-white shadow-md'
+                ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
+            title="Furniture & Decor Catalog"
           >
-            Furniture
+            <Sofa className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-[8px] leading-none mt-0.5">Decor</span>
           </button>
           <button
             onClick={() => { setActiveSubTab('construction'); onPlaceCatalogItem(null); }}
-            className={`py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+            className={`py-2 rounded-lg font-bold transition flex flex-col items-center justify-center gap-0.5 cursor-pointer select-none ${
               activeSubTab === 'construction'
-                ? 'bg-indigo-600 text-white shadow-md'
+                ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
+            title="Build & Shell Controls"
           >
-            <Hammer className="w-3 h-3 text-amber-400" />
-            <span>Build</span>
+            <Hammer className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-[8px] leading-none mt-0.5">Build</span>
+          </button>
+          <button
+            onClick={() => { setActiveSubTab('rooms'); onPlaceCatalogItem(null); }}
+            className={`py-2 rounded-lg font-bold transition flex flex-col items-center justify-center gap-0.5 cursor-pointer select-none ${
+              activeSubTab === 'rooms'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+            title="Room Naming Layout Tags"
+          >
+            <Tag className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-[8px] leading-none mt-0.5">Rooms</span>
+          </button>
+          <button
+            onClick={() => { setActiveSubTab('pricing'); onPlaceCatalogItem(null); }}
+            className={`py-2 rounded-lg font-bold transition flex flex-col items-center justify-center gap-0.5 cursor-pointer select-none ${
+              activeSubTab === 'pricing'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+            title="Up-to-date Sourcing Price Sheet"
+          >
+            <DollarSign className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-[8px] leading-none mt-0.5">Costing</span>
           </button>
           <button
             onClick={() => { setActiveSubTab('templates'); onPlaceCatalogItem(null); }}
-            className={`py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer select-none ${
+            className={`py-2 rounded-lg font-bold transition flex flex-col items-center justify-center gap-0.5 cursor-pointer select-none ${
               activeSubTab === 'templates'
-                ? 'bg-indigo-600 text-white shadow-md'
+                ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
+            title="Load Starting Canvas Templates"
           >
-            Presets
+            <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-[8px] leading-none mt-0.5">Presets</span>
           </button>
         </div>
       </div>
@@ -365,6 +401,20 @@ export default function Sidebar({
               </button>
             </div>
           </div>
+        )}
+
+        {activeSubTab === 'rooms' && (
+          <RoomLabeler
+            project={currentProject}
+            onUpdateProjectSettings={onUpdateProjectSettings}
+          />
+        )}
+
+        {activeSubTab === 'pricing' && (
+          <PricingMatrix
+            project={currentProject}
+            onUpdateProjectSettings={onUpdateProjectSettings}
+          />
         )}
       </div>
     </div>
