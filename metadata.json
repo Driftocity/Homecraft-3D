@@ -1,0 +1,6 @@
+{
+  "name": "3D Home Builder",
+  "description": "An interactive 3D Home Builder application to design rooms, place furniture, customize materials, and visualize floor plans in real-time.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
