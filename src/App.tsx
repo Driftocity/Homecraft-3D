@@ -9,6 +9,7 @@ import Sidebar from './components/Sidebar';
 import Inspector from './components/Inspector';
 import ConstructionGuide from './components/ConstructionGuide';
 import SummaryReportModal from './components/SummaryReportModal';
+import InstallModal from './components/InstallModal';
 import { HomeProject, Furniture, FloorMaterial } from './types';
 import { getCatalogItemById } from './data/furnitureCatalog';
 import {
@@ -32,7 +33,8 @@ import {
   Redo2,
   Save,
   History,
-  Edit2
+  Edit2,
+  Smartphone
 } from 'lucide-react';
 
 // Default starter project (Warm furnished living room)
@@ -221,6 +223,29 @@ export default function App() {
 
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
   const [tempName, setTempName] = useState<string>(project.name);
+  const [showInstallModal, setShowInstallModal] = useState<boolean>(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  // Monitor browser PWA install availability
+  React.useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleTriggerInstall = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to install prompt: ${outcome}`);
+    setDeferredPrompt(null);
+    setShowInstallModal(false);
+  };
 
   // Sync tempName when project.name changes externally (e.g., templates loading)
   React.useEffect(() => {
@@ -636,6 +661,16 @@ export default function App() {
             <span className="hidden sm:inline">Report</span>
           </button>
 
+          {/* Mobile Install Button */}
+          <button
+            onClick={() => setShowInstallModal(true)}
+            title="Download / Install this app on your mobile device (Shortcut: Standalone App)"
+            className="p-1.5 sm:px-3 sm:py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-slate-100 transition cursor-pointer flex items-center gap-1.5 text-xs font-black select-none font-mono shadow-md border border-indigo-500/30"
+          >
+            <Smartphone className="w-3.5 h-3.5 text-indigo-200 shrink-0" />
+            <span className="hidden md:inline">Download App</span>
+          </button>
+
           {/* Help Button */}
           <button
             onClick={() => setShowHelp(!showHelp)}
@@ -952,6 +987,13 @@ export default function App() {
           onClose={() => setShowSummaryReport(false)}
         />
       )}
+
+      <InstallModal
+        isOpen={showInstallModal}
+        onClose={() => setShowInstallModal(false)}
+        deferredPrompt={deferredPrompt}
+        onTriggerInstall={handleTriggerInstall}
+      />
     </div>
   );
 }

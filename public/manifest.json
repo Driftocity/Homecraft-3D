@@ -1,0 +1,17 @@
+{
+  "short_name": "3D Home",
+  "name": "3D Home Builder Studio",
+  "icons": [
+    {
+      "src": "/src/assets/images/app_icon_1782490673906.jpg",
+      "type": "image/jpeg",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#4f46e5",
+  "display": "standalone",
+  "orientation": "any"
+}
